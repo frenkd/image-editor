@@ -16,7 +16,7 @@ export const MIN_BLOB_FRACTION = 0.04;
 /**
  * Rule 2 — Padding: expand the content box by this fraction of the *original*
  * image size on each side (a little breathing room, not pixel-tight).
- * Hard-capped by CROP_OVERSCAN (5%) in cropMath.
+ * Hard-capped by CROP_OVERSCAN (~3%) in cropMath.
  */
 export const CONTENT_PAD_OF_IMAGE = 0.03;
 

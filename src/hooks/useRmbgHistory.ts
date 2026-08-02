@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { Rect } from "../lib/cropMath";
 import {
   blobFromSrc,
   deleteHistoryItem,
@@ -7,7 +8,9 @@ import {
   putHistoryItem,
   RMBG_HISTORY_MAX,
   updateHistoryColors,
+  updateHistoryCrop,
   type ColorMode,
+  type StoredCrop,
   type StoredHistoryItem,
 } from "../lib/rmbgHistory";
 
@@ -18,7 +21,23 @@ type HistoryEntry = {
   cutoutUrl: string;
   colorMode: ColorMode;
   customColor: string;
+  crop: Rect | null;
 };
+
+function normalizeCrop(crop: StoredCrop | null | undefined): Rect | null {
+  if (!crop) return null;
+  if (
+    ![crop.x, crop.y, crop.width, crop.height].every((n) => Number.isFinite(n))
+  ) {
+    return null;
+  }
+  return {
+    x: crop.x,
+    y: crop.y,
+    width: crop.width,
+    height: crop.height,
+  };
+}
 
 function toEntry(item: StoredHistoryItem): HistoryEntry {
   return {
@@ -28,6 +47,7 @@ function toEntry(item: StoredHistoryItem): HistoryEntry {
     cutoutUrl: URL.createObjectURL(item.cutout),
     colorMode: item.colorMode,
     customColor: item.customColor,
+    crop: normalizeCrop(item.crop),
   };
 }
 
@@ -83,6 +103,7 @@ export function useRmbgHistory() {
         cutout,
         colorMode: input.colorMode,
         customColor: input.customColor,
+        crop: null,
       };
       await putHistoryItem(stored);
       const entry = toEntry(stored);
@@ -119,6 +140,7 @@ export function useRmbgHistory() {
         cutout,
         colorMode: colors?.colorMode ?? current.colorMode,
         customColor: colors?.customColor ?? current.customColor,
+        crop: null,
       };
       await putHistoryItem(stored);
       const nextEntry = toEntry(stored);
@@ -129,6 +151,17 @@ export function useRmbgHistory() {
           return nextEntry;
         }),
       );
+    },
+    [activeId],
+  );
+
+  const setActiveCrop = useCallback(
+    (crop: Rect | null) => {
+      if (!activeId) return;
+      setEntries((prev) =>
+        prev.map((e) => (e.id === activeId ? { ...e, crop } : e)),
+      );
+      void updateHistoryCrop(activeId, crop);
     },
     [activeId],
   );
@@ -172,6 +205,7 @@ export function useRmbgHistory() {
     select,
     addEntry,
     replaceActiveCutout,
+    setActiveCrop,
     remove,
     setActiveColors,
   };

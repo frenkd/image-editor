@@ -4,13 +4,24 @@ export const RMBG_HISTORY_MAX = 20;
 
 export type ColorMode = "original" | "black" | "white" | "custom";
 
+/** Crop in cutout pixel space; null/missing = use the full cutout. */
+export type StoredCrop = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
 export type StoredHistoryItem = {
   id: string;
   createdAt: number;
   source: Blob;
+  /** Full background-removed bitmap (never replaced by crop). */
   cutout: Blob;
   colorMode: ColorMode;
   customColor: string;
+  /** Non-destructive crop over the full cutout. */
+  crop?: StoredCrop | null;
 };
 
 const DB_NAME = "image-editor-rmbg";
@@ -93,6 +104,28 @@ export async function updateHistoryColors(
     await reqToPromise(
       store.put({ ...existing, colorMode, customColor }),
     );
+    await new Promise<void>((resolve, reject) => {
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error ?? new Error("IndexedDB write failed"));
+    });
+  } finally {
+    db.close();
+  }
+}
+
+export async function updateHistoryCrop(
+  id: string,
+  crop: StoredCrop | null,
+): Promise<void> {
+  const db = await openDb();
+  try {
+    const tx = db.transaction(STORE, "readwrite");
+    const store = tx.objectStore(STORE);
+    const existing = await reqToPromise(
+      store.get(id) as IDBRequest<StoredHistoryItem | undefined>,
+    );
+    if (!existing) return;
+    await reqToPromise(store.put({ ...existing, crop }));
     await new Promise<void>((resolve, reject) => {
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error ?? new Error("IndexedDB write failed"));

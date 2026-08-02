@@ -6,11 +6,12 @@ import {
 } from "../lib/contentBounds";
 import {
   applyCropDrag,
+  clampRect,
   defaultCrop,
   type CropHandle,
   type Rect,
 } from "../lib/cropMath";
-import { cropImageToDataUrl, formatImageSize, loadImage } from "../lib/image";
+import { formatImageSize, loadImage } from "../lib/image";
 
 type Aspect = "free" | "1:1" | "16:9" | "4:3" | "3:2" | "9:16";
 
@@ -35,12 +36,29 @@ const HANDLES: Exclude<CropHandle, "move">[] = [
 ];
 
 type Props = {
+  /** Full cutout (never a previously baked crop). */
   imageUrl: string;
-  onApply: (croppedDataUrl: string) => void;
+  /** Prior non-destructive crop, if any. */
+  initialCrop?: Rect | null;
+  onApply: (crop: Rect) => void;
   onCancel: () => void;
 };
 
-export function InlineCropper({ imageUrl, onApply, onCancel }: Props) {
+function looksLikeSavedCrop(crop: Rect, w: number, h: number): boolean {
+  return (
+    crop.width >= 8 &&
+    crop.height >= 8 &&
+    crop.width <= w * 1.2 &&
+    crop.height <= h * 1.2
+  );
+}
+
+export function InlineCropper({
+  imageUrl,
+  initialCrop = null,
+  onApply,
+  onCancel,
+}: Props) {
   const [aspect, setAspect] = useState<Aspect>("free");
   const [natural, setNatural] = useState<{ w: number; h: number } | null>(null);
   const [seed, setSeed] = useState<Rect | null>(null);
@@ -66,11 +84,16 @@ export function InlineCropper({ imageUrl, onApply, onCancel }: Props) {
       const w = img.naturalWidth;
       const h = img.naturalHeight;
       let nextSeed: Rect;
-      try {
-        nextSeed =
-          contentCropRect(imageDataFromElement(img)) ?? defaultCrop(w, h, null);
-      } catch {
-        nextSeed = defaultCrop(w, h, null);
+      if (initialCrop && looksLikeSavedCrop(initialCrop, w, h)) {
+        nextSeed = clampRect(initialCrop, w, h);
+      } else {
+        try {
+          nextSeed =
+            contentCropRect(imageDataFromElement(img)) ??
+            defaultCrop(w, h, null);
+        } catch {
+          nextSeed = defaultCrop(w, h, null);
+        }
       }
       const ratio =
         ASPECTS.find((a) => a.id === aspectRef.current)?.ratio ?? null;
@@ -82,7 +105,7 @@ export function InlineCropper({ imageUrl, onApply, onCancel }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [imageUrl]);
+  }, [imageUrl, initialCrop]);
 
   useEffect(() => {
     if (!natural || !seed) return;
@@ -193,9 +216,7 @@ export function InlineCropper({ imageUrl, onApply, onCancel }: Props) {
             disabled={!crop}
             onClick={() => {
               if (!crop) return;
-              loadImage(imageUrl).then((img) => {
-                onApply(cropImageToDataUrl(img, crop));
-              });
+              onApply(crop);
             }}
           >
             Apply

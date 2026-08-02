@@ -13,8 +13,11 @@ export type CropHandle =
 
 const MIN = 16;
 
-/** Crop may overhang each image edge by up to this fraction of image size. */
-export const CROP_OVERSCAN = 0.05;
+/**
+ * Crop may overhang each image edge by at most this fraction of the image.
+ * (Breathing room only — not a way to blow up the canvas.)
+ */
+export const CROP_OVERSCAN = 0.03;
 
 function overscan(iw: number, ih: number) {
   return { padX: iw * CROP_OVERSCAN, padY: ih * CROP_OVERSCAN };

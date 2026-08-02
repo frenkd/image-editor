@@ -56,6 +56,14 @@ export function cropImageToDataUrl(
   return canvas.toDataURL("image/png");
 }
 
+export async function cropSrcToDataUrl(
+  src: string,
+  crop: { x: number; y: number; width: number; height: number },
+): Promise<string> {
+  const image = await loadImage(src);
+  return cropImageToDataUrl(image, crop);
+}
+
 /** Parse `#rgb` / `#rrggbb` into 0–255 channels. */
 export function parseHexColor(hex: string): { r: number; g: number; b: number } {
   const raw = hex.trim().replace(/^#/, "");

@@ -1,5 +1,5 @@
 import { useId, useState } from "react";
-import { pasteShortcutLabel } from "../lib/platform";
+import { isApplePlatform, pasteShortcutLabel } from "../lib/platform";
 
 type Props = {
   label?: string;
@@ -9,6 +9,22 @@ type Props = {
   /** Large 16:9 drop target with paste-mode list (idle hero). */
   hero?: boolean;
 };
+
+function ShortcutKeys({ label }: { label: string }) {
+  const keys = isApplePlatform()
+    ? ["⌘", "V"]
+    : label.split("+").map((part) => part.trim());
+
+  return (
+    <span className="shortcut" aria-label={label}>
+      {keys.map((key) => (
+        <kbd key={key} className="shortcut__key">
+          {key}
+        </kbd>
+      ))}
+    </span>
+  );
+}
 
 export function DropZone({
   label = "Drop an image",
@@ -58,12 +74,12 @@ export function DropZone({
       {hero && (
         <ul className="dropzone__modes">
           <li>
-            <kbd>{pasteKey}</kbd> screenshot or copied image
+            <ShortcutKeys label={pasteKey} />
+            <span>Paste a screenshot, image, or link</span>
           </li>
-          <li>
-            <kbd>{pasteKey}</kbd> image link
+          <li className="dropzone__modes-secondary">
+            Drop a file or click to browse
           </li>
-          <li>Drop a file or click to browse</li>
         </ul>
       )}
     </label>

@@ -1,10 +1,23 @@
-import { useEffect, useRef, useState, useTransition } from "react";
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import { DropZone } from "../components/DropZone";
 import { InlineCropper } from "../components/InlineCropper";
 import { Seo } from "../components/Seo";
 import { usePasteImage } from "../hooks/usePasteImage";
 import { useRmbgHistory } from "../hooks/useRmbgHistory";
-import { applyColorOverlay, downloadDataUrl, validateImageFile } from "../lib/image";
+import {
+  applyColorOverlay,
+  downloadDataUrl,
+  formatImageSize,
+  readImageSize,
+  validateImageFile,
+  type ImageSize,
+} from "../lib/image";
 import { RMBG_HISTORY_MAX, type ColorMode } from "../lib/rmbgHistory";
 import type { BgRemoveProgress } from "../lib/rmbg/removeBackground";
 import {
@@ -17,6 +30,7 @@ import {
 type Status = "idle" | "processing" | "ready" | "error";
 type ViewMode = "result" | "compare";
 type StudioMode = "view" | "crop";
+type OpenMenu = "none" | "recent" | "color";
 
 const COLOR_PRESETS: {
   id: Exclude<ColorMode, "custom">;
@@ -39,16 +53,19 @@ function progressLabel(p: BgRemoveProgress | null): string {
 
 export function RemoveBg() {
   const history = useRmbgHistory();
+  const newInputId = useId();
   const [pendingSourceUrl, setPendingSourceUrl] = useState<string | null>(null);
   const pendingObjectUrlRef = useRef<string | null>(null);
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState<BgRemoveProgress | null>(null);
   const [displayUrl, setDisplayUrl] = useState<string | null>(null);
-  const [colorPanelOpen, setColorPanelOpen] = useState(false);
-  const [historyOpen, setHistoryOpen] = useState(false);
+  const [openMenu, setOpenMenu] = useState<OpenMenu>("none");
   const [viewMode, setViewMode] = useState<ViewMode>("result");
   const [studioMode, setStudioMode] = useState<StudioMode>("view");
+  const [stageDragging, setStageDragging] = useState(false);
+  const [sourceSize, setSourceSize] = useState<ImageSize | null>(null);
+  const [resultSize, setResultSize] = useState<ImageSize | null>(null);
   const [isPending, startTransition] = useTransition();
   const runIdRef = useRef(0);
 
@@ -62,6 +79,8 @@ export function RemoveBg() {
   const busy = status === "processing" || isPending;
   const downloadUrl = displayUrl ?? cutoutUrl;
   const empty = !sourceUrl && !cutoutUrl && !busy;
+  const sourceSizeLabel = formatImageSize(sourceSize);
+  const resultSizeLabel = formatImageSize(resultSize);
 
   usePasteImage({
     onFile: (file) => {
@@ -85,6 +104,43 @@ export function RemoveBg() {
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (!sourceUrl) {
+      setSourceSize(null);
+      return;
+    }
+    let cancelled = false;
+    readImageSize(sourceUrl)
+      .then((size) => {
+        if (!cancelled) setSourceSize(size);
+      })
+      .catch(() => {
+        if (!cancelled) setSourceSize(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [sourceUrl]);
+
+  useEffect(() => {
+    const src = displayUrl ?? cutoutUrl;
+    if (!src) {
+      setResultSize(null);
+      return;
+    }
+    let cancelled = false;
+    readImageSize(src)
+      .then((size) => {
+        if (!cancelled) setResultSize(size);
+      })
+      .catch(() => {
+        if (!cancelled) setResultSize(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [displayUrl, cutoutUrl]);
 
   useEffect(() => {
     if (!cutoutUrl) {
@@ -116,6 +172,28 @@ export function RemoveBg() {
     };
   }, [cutoutUrl, colorMode, customColor]);
 
+  useEffect(() => {
+    if (openMenu === "none") return;
+
+    function onPointerDown(e: PointerEvent) {
+      const target = e.target;
+      if (!(target instanceof Element)) return;
+      if (target.closest("[data-studio-menu]")) return;
+      setOpenMenu("none");
+    }
+
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpenMenu("none");
+    }
+
+    window.addEventListener("pointerdown", onPointerDown);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("pointerdown", onPointerDown);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [openMenu]);
+
   function clearPendingSource() {
     if (pendingObjectUrlRef.current) {
       URL.revokeObjectURL(pendingObjectUrlRef.current);
@@ -130,7 +208,7 @@ export function RemoveBg() {
     setError(null);
     setProgress(null);
     setDisplayUrl(null);
-    setColorPanelOpen(false);
+    setOpenMenu("none");
     setStudioMode("view");
     setViewMode("result");
 
@@ -195,7 +273,7 @@ export function RemoveBg() {
     history.select(id);
     setStatus("ready");
     setError(null);
-    setColorPanelOpen(false);
+    setOpenMenu("none");
     setStudioMode("view");
     setViewMode("result");
   }
@@ -207,26 +285,112 @@ export function RemoveBg() {
     });
     setStudioMode("view");
     setViewMode("result");
-    setColorPanelOpen(false);
+    setOpenMenu("none");
+  }
+
+  function toggleMenu(menu: Exclude<OpenMenu, "none">) {
+    setOpenMenu((cur) => (cur === menu ? "none" : menu));
   }
 
   return (
     <div className="studio">
       <Seo
         page={homeSeo}
-        jsonLd={[webAppJsonLd(), softwareAppJsonLd(homeSeo), removeBgFaqJsonLd()]}
+        jsonLd={[
+          webAppJsonLd(),
+          softwareAppJsonLd(homeSeo),
+          removeBgFaqJsonLd(),
+        ]}
       />
 
       <header className="studio__header">
         <h1 className="studio__title">Remove background</h1>
-        {ready && downloadUrl && studioMode === "view" && (
-          <button
-            type="button"
-            className="btn btn--primary"
-            onClick={() => downloadDataUrl(downloadUrl, "cutout.png")}
-          >
-            Download
-          </button>
+
+        {!empty && (
+          <div className="studio__header-actions">
+            <label htmlFor={newInputId} className="btn btn--ghost btn--small">
+              New
+              <input
+                id={newInputId}
+                type="file"
+                accept="image/*"
+                className="sr-only"
+                disabled={busy || studioMode === "crop"}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  e.target.value = "";
+                  if (file) void ingestFile(file);
+                }}
+              />
+            </label>
+
+            {history.entries.length > 0 && studioMode === "view" && (
+              <div className="menu" data-studio-menu>
+                <button
+                  type="button"
+                  className={`btn btn--ghost btn--small ${openMenu === "recent" ? "is-active-tool" : ""}`}
+                  aria-expanded={openMenu === "recent"}
+                  disabled={busy}
+                  onClick={() => toggleMenu("recent")}
+                >
+                  Recent
+                  <span className="menu__count">{history.entries.length}</span>
+                </button>
+                {openMenu === "recent" && (
+                  <div
+                    className="menu-panel menu-panel--recent"
+                    role="dialog"
+                    aria-label="Recent cutouts"
+                  >
+                    <ul className="recent-grid">
+                      {history.entries.map((entry) => {
+                        const selected =
+                          !pendingSourceUrl && entry.id === history.activeId;
+                        return (
+                          <li key={entry.id} className="recent-grid__item">
+                            <button
+                              type="button"
+                              className={`recent-card ${selected ? "is-active" : ""}`}
+                              disabled={busy}
+                              onClick={() => onSelect(entry.id)}
+                            >
+                              <img
+                                src={entry.cutoutUrl}
+                                alt=""
+                                className="recent-card__thumb"
+                              />
+                            </button>
+                            <button
+                              type="button"
+                              className="recent-card__remove"
+                              aria-label="Remove from recent"
+                              disabled={busy}
+                              onClick={() => void history.remove(entry.id)}
+                            >
+                              ×
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                    <p className="menu-panel__meta">
+                      {history.entries.length}/{RMBG_HISTORY_MAX} on this device
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {ready && downloadUrl && studioMode === "view" && (
+              <button
+                type="button"
+                className="btn btn--primary btn--small"
+                onClick={() => downloadDataUrl(downloadUrl, "cutout.png")}
+              >
+                Download
+              </button>
+            )}
+          </div>
         )}
       </header>
 
@@ -238,7 +402,7 @@ export function RemoveBg() {
             onFile={(file) => void ingestFile(file)}
           />
           <p className="studio__privacy">
-            100% privacy · images stay on your device
+            Nothing leaves this device
           </p>
           {error && (
             <p className="status-line status-line--error" role="alert">
@@ -249,231 +413,225 @@ export function RemoveBg() {
       )}
 
       {!empty && (
-        <div className="studio__layout">
-          <aside className="studio__rail">
-            <DropZone
-              compact
-              label="New"
-              hint="drop / paste"
-              onFile={(file) => void ingestFile(file)}
-            />
-
-            {history.entries.length > 0 && (
-              <div className="control-block">
+        <div className="studio__work">
+          {ready && studioMode === "view" && (
+            <div className="studio__chrome">
+              <div className="seg" role="group" aria-label="View">
                 <button
                   type="button"
-                  className={`btn btn--ghost btn--small color-overlay-toggle ${historyOpen ? "is-active" : ""}`}
-                  aria-expanded={historyOpen}
-                  onClick={() => setHistoryOpen((o) => !o)}
+                  className={`seg__btn ${viewMode === "result" ? "is-active" : ""}`}
+                  onClick={() => {
+                    setViewMode("result");
+                    setOpenMenu("none");
+                  }}
                 >
-                  <span aria-hidden>{historyOpen ? "▾" : "▸"}</span>
-                  Recent ({history.entries.length}/{RMBG_HISTORY_MAX})
+                  Result
                 </button>
-                {historyOpen && (
-                  <ul className="history-list">
-                    {history.entries.map((entry) => {
-                      const selected =
-                        !pendingSourceUrl && entry.id === history.activeId;
-                      return (
-                        <li key={entry.id}>
-                          <button
-                            type="button"
-                            className={`history-item ${selected ? "is-active" : ""}`}
-                            disabled={busy || studioMode === "crop"}
-                            onClick={() => onSelect(entry.id)}
-                          >
-                            <img
-                              src={entry.cutoutUrl}
-                              alt=""
-                              className="history-item__thumb history-item__thumb--checker"
-                            />
-                            <span className="history-item__meta">
-                              <span className="history-item__time">
-                                {new Date(entry.createdAt).toLocaleString([], {
-                                  month: "short",
-                                  day: "numeric",
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })}
-                              </span>
-                            </span>
-                          </button>
-                          <button
-                            type="button"
-                            className="history-item__remove"
-                            aria-label="Remove"
-                            disabled={busy || studioMode === "crop"}
-                            onClick={() => void history.remove(entry.id)}
-                          >
-                            ×
-                          </button>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
+                <button
+                  type="button"
+                  className={`seg__btn ${viewMode === "compare" ? "is-active" : ""}`}
+                  onClick={() => {
+                    setViewMode("compare");
+                    setOpenMenu("none");
+                  }}
+                >
+                  Compare
+                </button>
               </div>
-            )}
 
-            {busy && (
-              <p className="status-line" role="status">
-                {progressLabel(progress)}
-              </p>
-            )}
-            {error && (
-              <p className="status-line status-line--error" role="alert">
-                {error}
-              </p>
-            )}
-          </aside>
-
-          <div className="studio__main">
-            {ready && studioMode === "view" && (
-              <div className="studio__toolbar">
-                <div className="chip-row" role="group" aria-label="View">
+              <div className="studio__tools">
+                <div className="menu" data-studio-menu>
                   <button
                     type="button"
-                    className={`chip ${viewMode === "result" ? "is-active" : ""}`}
-                    onClick={() => setViewMode("result")}
-                  >
-                    Result
-                  </button>
-                  <button
-                    type="button"
-                    className={`chip ${viewMode === "compare" ? "is-active" : ""}`}
-                    onClick={() => setViewMode("compare")}
-                  >
-                    Compare
-                  </button>
-                </div>
-
-                <div className="studio__toolbar-tools">
-                  <button
-                    type="button"
-                    className={`btn btn--ghost btn--small ${colorPanelOpen || colorActive ? "is-active-tool" : ""}`}
-                    aria-expanded={colorPanelOpen}
-                    onClick={() => setColorPanelOpen((o) => !o)}
+                    className={`btn btn--ghost btn--small ${openMenu === "color" || colorActive ? "is-active-tool" : ""}`}
+                    aria-expanded={openMenu === "color"}
+                    onClick={() => toggleMenu("color")}
                   >
                     Color{colorActive ? " · on" : ""}
                   </button>
-                  <button
-                    type="button"
-                    className="btn btn--ghost btn--small"
-                    disabled={!downloadUrl}
-                    onClick={() => {
-                      setColorPanelOpen(false);
-                      setStudioMode("crop");
-                    }}
-                  >
-                    Crop
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {ready && studioMode === "view" && colorPanelOpen && (
-              <div className="color-overlay-panel studio__color-panel">
-                <div className="chip-row">
-                  {COLOR_PRESETS.map((preset) => (
-                    <button
-                      key={preset.id}
-                      type="button"
-                      className={`chip ${colorMode === preset.id ? "is-active" : ""}`}
-                      onClick={() =>
-                        history.setActiveColors(preset.id, customColor)
-                      }
+                  {openMenu === "color" && (
+                    <div
+                      className="menu-panel menu-panel--color"
+                      role="dialog"
+                      aria-label="Color overlay"
                     >
-                      {preset.label}
-                    </button>
-                  ))}
-                  <button
-                    type="button"
-                    className={`chip ${colorMode === "custom" ? "is-active" : ""}`}
-                    onClick={() =>
-                      history.setActiveColors("custom", customColor)
-                    }
-                  >
-                    Custom
-                  </button>
+                      <div className="chip-row">
+                        {COLOR_PRESETS.map((preset) => (
+                          <button
+                            key={preset.id}
+                            type="button"
+                            className={`chip ${colorMode === preset.id ? "is-active" : ""}`}
+                            onClick={() =>
+                              history.setActiveColors(preset.id, customColor)
+                            }
+                          >
+                            {preset.label}
+                          </button>
+                        ))}
+                        <button
+                          type="button"
+                          className={`chip ${colorMode === "custom" ? "is-active" : ""}`}
+                          onClick={() =>
+                            history.setActiveColors("custom", customColor)
+                          }
+                        >
+                          Custom
+                        </button>
+                      </div>
+                      {colorMode === "custom" && (
+                        <label className="color-picker-row">
+                          <input
+                            type="color"
+                            value={customColor}
+                            onChange={(e) =>
+                              history.setActiveColors("custom", e.target.value)
+                            }
+                          />
+                          <span>{customColor}</span>
+                        </label>
+                      )}
+                    </div>
+                  )}
                 </div>
-                {colorMode === "custom" && (
-                  <label className="color-picker-row">
-                    <input
-                      type="color"
-                      value={customColor}
-                      onChange={(e) =>
-                        history.setActiveColors("custom", e.target.value)
-                      }
-                    />
-                    <span>{customColor}</span>
-                  </label>
-                )}
+
+                <button
+                  type="button"
+                  className="btn btn--ghost btn--small"
+                  disabled={!downloadUrl}
+                  onClick={() => {
+                    setOpenMenu("none");
+                    setStudioMode("crop");
+                  }}
+                >
+                  Crop
+                </button>
               </div>
-            )}
+            </div>
+          )}
 
-            {studioMode === "crop" && downloadUrl ? (
-              <InlineCropper
-                imageUrl={downloadUrl}
-                onCancel={() => setStudioMode("view")}
-                onApply={(cropped) => void applyCrop(cropped)}
-              />
-            ) : (
-              <div className="studio__stage">
-                {busy && !displayUrl && (
-                  <div className="stage-empty">
-                    <p>{progressLabel(progress)}</p>
-                    {sourceUrl && (
-                      <img
-                        src={sourceUrl}
-                        alt=""
-                        className="studio__processing-thumb"
-                      />
-                    )}
-                  </div>
-                )}
+          {busy && (
+            <p className="studio__status" role="status">
+              {progressLabel(progress)}
+            </p>
+          )}
+          {error && (
+            <p className="studio__status studio__status--error" role="alert">
+              {error}
+            </p>
+          )}
 
-                {!busy && viewMode === "compare" && sourceUrl && (
-                  <div className="compare">
-                    <figure className="compare__panel">
-                      <figcaption>Before</figcaption>
-                      <div className="compare__frame">
-                        <img src={sourceUrl} alt="Original" />
-                      </div>
-                    </figure>
-                    <figure className="compare__panel">
-                      <figcaption>After</figcaption>
-                      <div className="compare__frame compare__frame--checker">
-                        {displayUrl ? (
-                          <img src={displayUrl} alt="Background removed" />
-                        ) : (
-                          <div className="stage-empty stage-empty--inset">…</div>
-                        )}
-                      </div>
-                    </figure>
-                  </div>
-                )}
+          {studioMode === "crop" && downloadUrl ? (
+            <InlineCropper
+              imageUrl={downloadUrl}
+              onCancel={() => setStudioMode("view")}
+              onApply={(cropped) => void applyCrop(cropped)}
+            />
+          ) : (
+            <div
+              className={`studio__stage ${stageDragging ? "is-drop-target" : ""}`}
+              onDragOver={(e) => {
+                if (busy || studioMode === "crop") return;
+                e.preventDefault();
+                setStageDragging(true);
+              }}
+              onDragLeave={() => setStageDragging(false)}
+              onDrop={(e) => {
+                if (busy || studioMode === "crop") return;
+                e.preventDefault();
+                setStageDragging(false);
+                const file = e.dataTransfer.files?.[0];
+                if (file) void ingestFile(file);
+              }}
+            >
+              {busy && !displayUrl && (
+                <div className="stage-empty">
+                  <p>{progressLabel(progress)}</p>
+                  {sourceSizeLabel && (
+                    <p className="size-meta">{sourceSizeLabel}</p>
+                  )}
+                  {sourceUrl && (
+                    <img
+                      src={sourceUrl}
+                      alt=""
+                      className="studio__processing-thumb"
+                    />
+                  )}
+                </div>
+              )}
 
-                {!busy && viewMode === "result" && (
-                  <div className="studio__result">
-                    {displayUrl ? (
+              {!busy && viewMode === "compare" && sourceUrl && (
+                <div className="compare">
+                  <figure className="compare__panel">
+                    <figcaption>
+                      Before
+                      {sourceSizeLabel ? (
+                        <span className="size-meta"> {sourceSizeLabel}</span>
+                      ) : null}
+                    </figcaption>
+                    <div className="compare__frame">
+                      <img src={sourceUrl} alt="Original" />
+                    </div>
+                  </figure>
+                  <figure className="compare__panel">
+                    <figcaption>
+                      After
+                      {resultSizeLabel ? (
+                        <span className="size-meta"> {resultSizeLabel}</span>
+                      ) : null}
+                    </figcaption>
+                    <div className="compare__frame compare__frame--checker">
+                      {displayUrl ? (
+                        <img src={displayUrl} alt="Background removed" />
+                      ) : (
+                        <div className="stage-empty stage-empty--inset">…</div>
+                      )}
+                    </div>
+                  </figure>
+                </div>
+              )}
+
+              {!busy && viewMode === "result" && (
+                <div className="studio__result">
+                  {displayUrl ? (
+                    <>
                       <div className="studio__result-frame compare__frame--checker">
                         <img src={displayUrl} alt="Background removed" />
                       </div>
-                    ) : sourceUrl ? (
+                      {resultSizeLabel && (
+                        <p className="size-meta size-meta--below">
+                          {resultSizeLabel}
+                          {sourceSizeLabel &&
+                          sourceSizeLabel !== resultSizeLabel
+                            ? ` · from ${sourceSizeLabel}`
+                            : ""}
+                        </p>
+                      )}
+                    </>
+                  ) : sourceUrl ? (
+                    <>
                       <div className="compare__frame">
                         <img src={sourceUrl} alt="Original" />
                       </div>
-                    ) : null}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+                      {sourceSizeLabel && (
+                        <p className="size-meta size-meta--below">
+                          {sourceSizeLabel}
+                        </p>
+                      )}
+                    </>
+                  ) : null}
+                </div>
+              )}
+
+              {stageDragging && (
+                <div className="studio__drop-hint">Drop to replace</div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
       <footer className="studio__footer">
-        <span>100% privacy · local only</span>
+        <span>On-device · nothing uploaded</span>
         <span aria-hidden>·</span>
         <span>
           Made by{" "}
@@ -491,15 +649,14 @@ export function RemoveBg() {
         </a>
       </footer>
 
-      {/* Collapsed for visitors; still crawlable for SEO */}
       <details className="studio__seo">
         <summary>FAQ</summary>
         <dl className="faq-list">
           <div>
-            <dt>Is this 100% private?</dt>
+            <dt>Do images leave my device?</dt>
             <dd>
-              Yes. Images never leave your device. Processing and history stay
-              in this browser.
+              No. Nothing is uploaded. Processing and history stay in this
+              browser.
             </dd>
           </div>
           <div>

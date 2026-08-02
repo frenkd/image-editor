@@ -5,7 +5,7 @@ import {
   type CropHandle,
   type Rect,
 } from "../lib/cropMath";
-import { cropImageToDataUrl, loadImage } from "../lib/image";
+import { cropImageToDataUrl, formatImageSize, loadImage } from "../lib/image";
 
 type Aspect = "free" | "1:1" | "16:9" | "4:3" | "3:2" | "9:16";
 
@@ -149,6 +149,15 @@ export function InlineCropper({ imageUrl, onApply, onCancel }: Props) {
           ))}
         </div>
         <div className="inline-crop__actions">
+          {crop && natural && (
+            <p className="size-meta">
+              {Math.round(crop.width)} × {Math.round(crop.height)}
+              <span className="size-meta__muted">
+                {" "}
+                / {formatImageSize(natural)}
+              </span>
+            </p>
+          )}
           <button type="button" className="btn btn--ghost" onClick={onCancel}>
             Cancel
           </button>

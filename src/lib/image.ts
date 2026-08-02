@@ -1,5 +1,7 @@
 export const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
 
+export type ImageSize = { w: number; h: number };
+
 export function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -7,6 +9,16 @@ export function loadImage(src: string): Promise<HTMLImageElement> {
     img.onerror = () => reject(new Error("Failed to load image"));
     img.src = src;
   });
+}
+
+export async function readImageSize(src: string): Promise<ImageSize> {
+  const img = await loadImage(src);
+  return { w: img.naturalWidth, h: img.naturalHeight };
+}
+
+export function formatImageSize(size: ImageSize | null | undefined): string {
+  if (!size?.w || !size?.h) return "";
+  return `${size.w.toLocaleString()} × ${size.h.toLocaleString()}`;
 }
 
 export function downloadDataUrl(dataUrl: string, filename: string) {

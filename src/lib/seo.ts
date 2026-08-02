@@ -82,10 +82,10 @@ export function removeBgFaqJsonLd(): Record<string, unknown> {
       },
       {
         "@type": "Question",
-        name: "Is this 100% private? Do my images get uploaded?",
+        name: "Do my images get uploaded?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "Yes, 100% private. Images never leave your device. Background removal runs locally in your browser; history stays on your computer.",
+          text: "No. Nothing is uploaded. Background removal runs on-device in your browser; history stays on your computer.",
         },
       },
       {

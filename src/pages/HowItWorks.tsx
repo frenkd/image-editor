@@ -56,7 +56,8 @@ export function HowItWorks() {
         </a>
         . Recent cutouts stay in this browser (IndexedDB).
         <br />
-        More detail in the <Link to="/faq">FAQ</Link>.
+        More detail in the <Link to="/faq">FAQ</Link>. Examples in{" "}
+        <Link to="/use-cases">common use cases</Link>.
       </p>
 
       <p className="explain__cta">

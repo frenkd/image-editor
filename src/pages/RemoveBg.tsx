@@ -477,7 +477,7 @@ export function RemoveBg() {
           />
           <p className="studio__privacy">
             Your images stay on this device ·{" "}
-            <Link to="/privacy">Privacy</Link>
+            <Link to="/how-it-works">How it works</Link>
           </p>
           {error && (
             <p className="status-line status-line--error" role="alert">
@@ -586,7 +586,7 @@ export function RemoveBg() {
                     />
                     <p className="studio__privacy">
                       Your images stay on this device ·{" "}
-                      <Link to="/privacy">Privacy</Link>
+                      <Link to="/how-it-works">How it works</Link>
                     </p>
                     {error && (
                       <p

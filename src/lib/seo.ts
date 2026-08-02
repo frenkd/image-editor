@@ -80,6 +80,22 @@ export const termsSeo: PageSeo = {
   keywords: ["terms of use", "background remover terms"],
 };
 
+export const useCasesSeo: PageSeo = {
+  path: "/use-cases",
+  title: "Background Remover Use Cases: People, Cars, Logos",
+  description:
+    "Common background removal examples: cut out a person, isolate a car, and clean a logo with optional color fill. Free local AI in your browser.",
+  keywords: [
+    "background remover use cases",
+    "cut out person background",
+    "remove car background",
+    "logo background remover",
+    "recolor logo transparent background",
+    "product photo background removal",
+    "portrait background remover",
+  ],
+};
+
 export function absoluteUrl(path: string): string {
   if (path.startsWith("http")) return path;
   return `${SITE_URL}${path.startsWith("/") ? path : `/${path}`}`;

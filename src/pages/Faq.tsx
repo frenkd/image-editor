@@ -17,7 +17,8 @@ export function Faq() {
 
       <p className="doc__note">
         Want the short version? See{" "}
-        <Link to="/how-it-works">how it works</Link>.
+        <Link to="/how-it-works">how it works</Link>. For before and after
+        examples, see <Link to="/use-cases">common use cases</Link>.
       </p>
     </DocShell>
   );

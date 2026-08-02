@@ -5,6 +5,7 @@ import { Faq } from "./pages/Faq";
 import { HowItWorks } from "./pages/HowItWorks";
 import { Privacy } from "./pages/Privacy";
 import { Terms } from "./pages/Terms";
+import { UseCases } from "./pages/UseCases";
 import { RemoveBg } from "./pages/RemoveBg";
 
 export default function App() {
@@ -15,6 +16,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<RemoveBg />} />
             <Route path="/how-it-works" element={<HowItWorks />} />
+            <Route path="/use-cases" element={<UseCases />} />
             <Route path="/faq" element={<Faq />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/terms" element={<Terms />} />

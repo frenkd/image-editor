@@ -1,6 +1,5 @@
 import {
   useEffect,
-  useId,
   useRef,
   useState,
   useTransition,
@@ -12,8 +11,10 @@ import { Seo } from "../components/Seo";
 import { SiteFooter } from "../components/SiteFooter";
 import { usePasteImage } from "../hooks/usePasteImage";
 import { useRmbgHistory } from "../hooks/useRmbgHistory";
+import type { Rect } from "../lib/cropMath";
 import {
   applyColorOverlay,
+  cropSrcToDataUrl,
   downloadDataUrl,
   formatImageSize,
   readImageSize,
@@ -37,7 +38,7 @@ import {
 
 type Status = "idle" | "processing" | "ready" | "error";
 type ViewMode = "result" | "compare";
-type StudioMode = "view" | "crop";
+type StudioMode = "view" | "crop" | "new";
 type OpenMenu = "none" | "color";
 
 function progressLabel(p: BgRemoveProgress | null): string {
@@ -52,7 +53,6 @@ function progressLabel(p: BgRemoveProgress | null): string {
 
 export function RemoveBg() {
   const history = useRmbgHistory();
-  const newInputId = useId();
   const [pendingSourceUrl, setPendingSourceUrl] = useState<string | null>(null);
   const pendingObjectUrlRef = useRef<string | null>(null);
   const [status, setStatus] = useState<Status>("idle");
@@ -76,6 +76,7 @@ export function RemoveBg() {
   const active = history.active;
   const colorMode = active?.colorMode ?? "original";
   const customColor = active?.customColor ?? "#00a894";
+  const cropRect = active?.crop ?? null;
   const pickerHex =
     colorMode === "black"
       ? "#000000"
@@ -157,10 +158,6 @@ export function RemoveBg() {
       setDisplayUrl(null);
       return;
     }
-    if (colorMode === "original") {
-      setDisplayUrl(cutoutUrl);
-      return;
-    }
     const hex =
       colorMode === "black"
         ? "#000000"
@@ -168,19 +165,30 @@ export function RemoveBg() {
           ? "#ffffff"
           : customColor;
     let cancelled = false;
-    applyColorOverlay(cutoutUrl, hex)
-      .then((out) => {
-        if (!cancelled) setDisplayUrl(out);
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Color overlay failed");
+
+    (async () => {
+      try {
+        let url = cutoutUrl;
+        if (colorMode !== "original") {
+          url = await applyColorOverlay(url, hex);
         }
-      });
+        if (cropRect) {
+          url = await cropSrcToDataUrl(url, cropRect);
+        }
+        if (!cancelled) setDisplayUrl(url);
+      } catch (err) {
+        if (!cancelled) {
+          setError(
+            err instanceof Error ? err.message : "Could not build preview",
+          );
+        }
+      }
+    })();
+
     return () => {
       cancelled = true;
     };
-  }, [cutoutUrl, colorMode, customColor]);
+  }, [cutoutUrl, colorMode, customColor, cropRect]);
 
   useEffect(() => {
     if (openMenu === "none") return;
@@ -342,11 +350,8 @@ export function RemoveBg() {
     setViewMode("result");
   }
 
-  async function applyCrop(cropped: string) {
-    await history.replaceActiveCutout(cropped, {
-      colorMode: "original",
-      customColor,
-    });
+  function applyCrop(next: Rect) {
+    history.setActiveCrop(next);
     setStudioMode("view");
     setViewMode("result");
     setOpenMenu("none");
@@ -368,21 +373,32 @@ export function RemoveBg() {
 
         {!empty && (
           <div className="studio__header-actions">
-            <label htmlFor={newInputId} className="btn btn--ghost btn--small">
-              New
-              <input
-                id={newInputId}
-                type="file"
-                accept="image/*"
-                className="sr-only"
-                disabled={busy || studioMode === "crop"}
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  e.target.value = "";
-                  if (file) void ingestFile(file);
+            {studioMode === "new" ? (
+              <button
+                type="button"
+                className="btn btn--ghost btn--small"
+                disabled={busy}
+                onClick={() => {
+                  setError(null);
+                  setStudioMode("view");
                 }}
-              />
-            </label>
+              >
+                Cancel
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="btn btn--ghost btn--small"
+                disabled={busy || studioMode === "crop"}
+                onClick={() => {
+                  setOpenMenu("none");
+                  setError(null);
+                  setStudioMode("new");
+                }}
+              >
+                New
+              </button>
+            )}
 
             {ready && downloadUrl && studioMode === "view" && (
               <button
@@ -466,12 +482,42 @@ export function RemoveBg() {
           )}
 
           <div className="studio__work">
-            {studioMode === "crop" && downloadUrl ? (
+            {studioMode === "crop" && cutoutUrl ? (
               <InlineCropper
-                imageUrl={downloadUrl}
+                imageUrl={cutoutUrl}
+                initialCrop={cropRect}
                 onCancel={() => setStudioMode("view")}
-                onApply={(cropped) => void applyCrop(cropped)}
+                onApply={applyCrop}
               />
+            ) : studioMode === "new" && !busy ? (
+              <>
+                <div className="studio__chrome">
+                  <p className="studio__compose-hint">
+                    Drop, paste, or choose another image
+                  </p>
+                </div>
+                <div className="studio__stage studio__stage--compose">
+                  <div className="studio__compose">
+                    <DropZone
+                      hero
+                      label="Drop or paste an image"
+                      onFile={(file) => void ingestFile(file)}
+                    />
+                    <p className="studio__privacy">
+                      Nothing leaves this device ·{" "}
+                      <Link to="/how-it-works">How it works</Link>
+                    </p>
+                    {error && (
+                      <p
+                        className="status-line status-line--error"
+                        role="alert"
+                      >
+                        {error}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </>
             ) : (
               <>
                 <div className="studio__chrome">

@@ -41,6 +41,8 @@ type Props = {
   /** Prior non-destructive crop, if any. */
   initialCrop?: Rect | null;
   onApply: (crop: Rect) => void;
+  /** Clear crop and restore the full cutout. */
+  onRevert: () => void;
   onCancel: () => void;
 };
 
@@ -57,6 +59,7 @@ export function InlineCropper({
   imageUrl,
   initialCrop = null,
   onApply,
+  onRevert,
   onCancel,
 }: Props) {
   const [aspect, setAspect] = useState<Aspect>("free");
@@ -203,6 +206,14 @@ export function InlineCropper({
               </span>
             </p>
           )}
+          <button
+            type="button"
+            className="btn btn--ghost btn--small"
+            onClick={onRevert}
+            title="Clear crop and use the full cutout"
+          >
+            Original
+          </button>
           <button
             type="button"
             className="btn btn--ghost btn--small"

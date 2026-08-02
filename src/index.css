@@ -539,17 +539,9 @@ label.btn {
   gap: 0.45rem;
 }
 
-.color-board__picker input[type="color"] {
-  width: 2.4rem;
-  height: 2.4rem;
-  padding: 0;
-  border: 1px solid var(--line-strong);
-  border-radius: 8px;
-  background: transparent;
-  cursor: pointer;
-}
-
 .color-swatch {
+  position: relative;
+  box-sizing: border-box;
   width: 2.4rem;
   height: 2.4rem;
   border: 1px solid var(--line-strong);
@@ -557,6 +549,45 @@ label.btn {
   padding: 0;
   cursor: pointer;
   background: var(--surface);
+  flex: 0 0 2.4rem;
+  overflow: hidden;
+}
+
+.color-swatch--picker {
+  display: grid;
+  place-items: center;
+}
+
+.color-swatch__fill {
+  position: absolute;
+  inset: 0;
+  background: var(--teal);
+}
+
+.color-swatch__icon {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--ink);
+  box-shadow: 0 0 0 1px rgba(11, 15, 20, 0.12);
+  pointer-events: none;
+}
+
+.color-swatch__input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  cursor: pointer;
 }
 
 .color-swatch--black {
@@ -570,10 +601,12 @@ label.btn {
 .color-swatch--none {
   width: auto;
   min-width: 2.4rem;
+  flex: 0 0 auto;
   padding: 0 0.55rem;
   font-size: 0.78rem;
   font-weight: 600;
   color: var(--ink-soft);
+  overflow: visible;
 }
 
 .color-swatch.is-active {
@@ -612,10 +645,39 @@ label.btn {
 
 .progress-rail__fill {
   height: 100%;
+  width: 100%;
   border-radius: inherit;
   background: var(--teal-deep);
   opacity: 0.75;
-  transition: width 0.12s linear;
+  transform: scaleX(var(--p, 0));
+  transform-origin: left center;
+  transition: transform 0.15s linear;
+  will-change: transform;
+}
+
+/*
+ * Process phase blocks the main thread (WASM), so JS timers freeze.
+ * Drive the ETA with a compositor-friendly transform animation instead.
+ */
+.progress-rail__fill.is-estimating {
+  transition: none;
+  animation: progress-estimate var(--eta, 5s) cubic-bezier(0.12, 0.65, 0.2, 1)
+    forwards;
+}
+
+.progress-rail__fill.is-done {
+  transition: transform 0.2s ease;
+  transform: scaleX(1);
+  animation: none;
+}
+
+@keyframes progress-estimate {
+  from {
+    transform: scaleX(var(--from, 0.08));
+  }
+  to {
+    transform: scaleX(0.97);
+  }
 }
 
 .studio__stage {

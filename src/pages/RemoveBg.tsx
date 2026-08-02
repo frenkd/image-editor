@@ -3,6 +3,7 @@ import {
   useRef,
   useState,
   useTransition,
+  type CSSProperties,
 } from "react";
 import { Link } from "react-router-dom";
 import { DropZone } from "../components/DropZone";
@@ -24,7 +25,6 @@ import {
 import { RMBG_HISTORY_MAX } from "../lib/rmbgHistory";
 import type { BgRemoveProgress } from "../lib/rmbg/removeBackground";
 import {
-  blendProgress,
   estimateProcessMs,
   megapixels,
   modelLikelyCached,
@@ -35,6 +35,8 @@ import {
   softwareAppJsonLd,
   webAppJsonLd,
 } from "../lib/seo";
+
+const COLOR_DEBOUNCE_MS = 140;
 
 type Status = "idle" | "processing" | "ready" | "error";
 type ViewMode = "result" | "compare";
@@ -65,13 +67,14 @@ export function RemoveBg() {
   const [stageDragging, setStageDragging] = useState(false);
   const [sourceSize, setSourceSize] = useState<ImageSize | null>(null);
   const [resultSize, setResultSize] = useState<ImageSize | null>(null);
-  const [progressPct, setProgressPct] = useState(0);
   const [processEtaMs, setProcessEtaMs] = useState(5000);
+  const [draftColor, setDraftColor] = useState("#00a894");
   const [isPending, startTransition] = useTransition();
   const runIdRef = useRef(0);
   const processStartedAtRef = useRef<number | null>(null);
   const runMpRef = useRef(2);
   const cachedModelRef = useRef(modelLikelyCached());
+  const colorDebounceRef = useRef<number | null>(null);
 
   const active = history.active;
   const colorMode = active?.colorMode ?? "original";
@@ -92,6 +95,20 @@ export function RemoveBg() {
   const empty = !sourceUrl && !cutoutUrl && !busy;
   const sourceSizeLabel = formatImageSize(sourceSize);
   const resultSizeLabel = formatImageSize(resultSize);
+  const modelCached = cachedModelRef.current;
+  const downloadShare = modelCached ? 0.08 : 0.42;
+  const isDownloading = busy && progress?.phase === "download";
+  /** WASM work freezes JS timers — use CSS ETA animation instead. */
+  const isEstimating =
+    busy && status === "processing" && !isDownloading;
+  const downloadProgress =
+    typeof progress?.percent === "number"
+      ? Math.min(1, Math.max(0, progress.percent / 100))
+      : 0;
+  const barFrom = isDownloading
+    ? downloadProgress * downloadShare
+    : downloadShare;
+  const barNow = isDownloading ? barFrom : isEstimating ? barFrom : 0;
 
   usePasteImage({
     onFile: (file) => {
@@ -154,6 +171,18 @@ export function RemoveBg() {
   }, [displayUrl, cutoutUrl]);
 
   useEffect(() => {
+    setDraftColor(pickerHex);
+  }, [pickerHex]);
+
+  useEffect(() => {
+    return () => {
+      if (colorDebounceRef.current != null) {
+        window.clearTimeout(colorDebounceRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     if (!cutoutUrl) {
       setDisplayUrl(null);
       return;
@@ -212,32 +241,6 @@ export function RemoveBg() {
     };
   }, [openMenu]);
 
-  useEffect(() => {
-    if (!busy) {
-      setProgressPct(0);
-      return;
-    }
-    let raf = 0;
-    const tick = () => {
-      const elapsed = processStartedAtRef.current
-        ? performance.now() - processStartedAtRef.current
-        : 0;
-      setProgressPct(
-        blendProgress({
-          phase: progress?.phase ?? null,
-          downloadPercent:
-            typeof progress?.percent === "number" ? progress.percent : null,
-          processElapsedMs: elapsed,
-          processEtaMs,
-          modelLikelyCached: cachedModelRef.current,
-        }),
-      );
-      raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [busy, progress, processEtaMs]);
-
   function clearPendingSource() {
     if (pendingObjectUrlRef.current) {
       URL.revokeObjectURL(pendingObjectUrlRef.current);
@@ -250,10 +253,16 @@ export function RemoveBg() {
     const runId = ++runIdRef.current;
     processStartedAtRef.current = null;
     cachedModelRef.current = modelLikelyCached();
+    if (cachedModelRef.current) {
+      processStartedAtRef.current = performance.now();
+    }
     setStatus("processing");
     setError(null);
-    setProgress(null);
-    setProgressPct(cachedModelRef.current ? 4 : 1);
+    setProgress(
+      cachedModelRef.current
+        ? { phase: "process", message: "Removing…" }
+        : { phase: "download", message: "Loading model…", percent: 0 },
+    );
     setDisplayUrl(null);
     setOpenMenu("none");
     setStudioMode("view");
@@ -307,7 +316,6 @@ export function RemoveBg() {
           });
         }
         clearPendingSource();
-        setProgressPct(100);
         setStatus("ready");
         setProgress(null);
       } catch (err) {
@@ -355,6 +363,24 @@ export function RemoveBg() {
     setStudioMode("view");
     setViewMode("result");
     setOpenMenu("none");
+  }
+
+  function revertCrop() {
+    history.setActiveCrop(null);
+    setStudioMode("view");
+    setViewMode("result");
+    setOpenMenu("none");
+  }
+
+  function queueCustomColor(hex: string) {
+    setDraftColor(hex);
+    if (colorDebounceRef.current != null) {
+      window.clearTimeout(colorDebounceRef.current);
+    }
+    colorDebounceRef.current = window.setTimeout(() => {
+      history.setActiveColors("custom", hex);
+      colorDebounceRef.current = null;
+    }, COLOR_DEBOUNCE_MS);
   }
 
   function toggleMenu(menu: Exclude<OpenMenu, "none">) {
@@ -488,6 +514,7 @@ export function RemoveBg() {
                 initialCrop={cropRect}
                 onCancel={() => setStudioMode("view")}
                 onApply={applyCrop}
+                onRevert={revertCrop}
               />
             ) : studioMode === "new" && !busy ? (
               <>
@@ -525,17 +552,23 @@ export function RemoveBg() {
                     <div className="progress-rail" role="status">
                       <div className="progress-rail__meta">
                         <span>{progressLabel(progress)}</span>
-                        <span className="progress-rail__pct">
-                          {Math.round(progressPct)}%
-                        </span>
+                        {isDownloading && (
+                          <span className="progress-rail__pct">
+                            {Math.round(downloadProgress * 100)}%
+                          </span>
+                        )}
                       </div>
-                      <div
-                        className="progress-rail__track"
-                        aria-hidden
-                      >
+                      <div className="progress-rail__track" aria-hidden>
                         <div
-                          className="progress-rail__fill"
-                          style={{ width: `${progressPct}%` }}
+                          key={isEstimating ? "estimating" : "download"}
+                          className={`progress-rail__fill ${isEstimating ? "is-estimating" : ""}`}
+                          style={
+                            {
+                              "--eta": `${Math.max(900, processEtaMs)}ms`,
+                              "--from": String(Math.max(0.04, barFrom)),
+                              "--p": String(barNow),
+                            } as CSSProperties
+                          }
                         />
                       </div>
                     </div>
@@ -584,48 +617,95 @@ export function RemoveBg() {
                               aria-label="Color overlay"
                             >
                               <div className="color-board">
-                                <label className="color-board__picker">
+                                <label
+                                  className={`color-swatch color-swatch--picker ${colorMode === "custom" ? "is-active" : ""}`}
+                                  title="Pick a color"
+                                >
+                                  <span
+                                    className="color-swatch__fill"
+                                    style={{ background: draftColor }}
+                                  />
+                                  <span className="color-swatch__icon" aria-hidden>
+                                    <svg
+                                      width="14"
+                                      height="14"
+                                      viewBox="0 0 24 24"
+                                      fill="none"
+                                    >
+                                      <path
+                                        d="M4 20l.7-2.5L14.5 7.7l2.8 2.8L8.5 19.3 4 20z"
+                                        stroke="currentColor"
+                                        strokeWidth="1.8"
+                                        strokeLinejoin="round"
+                                      />
+                                      <path
+                                        d="M13.2 6.4l2.1-2.1a1.6 1.6 0 0 1 2.3 0l2.1 2.1a1.6 1.6 0 0 1 0 2.3l-2.1 2.1"
+                                        stroke="currentColor"
+                                        strokeWidth="1.8"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                      />
+                                    </svg>
+                                  </span>
                                   <span className="sr-only">Custom color</span>
                                   <input
                                     type="color"
-                                    value={pickerHex}
+                                    className="color-swatch__input"
+                                    value={draftColor}
                                     onChange={(e) =>
-                                      history.setActiveColors(
-                                        "custom",
-                                        e.target.value,
-                                      )
+                                      queueCustomColor(e.target.value)
                                     }
                                   />
                                 </label>
                                 <button
                                   type="button"
-                                  className={`color-swatch color-swatch--black ${colorMode === "black" || pickerHex.toLowerCase() === "#000000" ? "is-active" : ""}`}
+                                  className={`color-swatch color-swatch--black ${colorMode === "black" ? "is-active" : ""}`}
                                   aria-label="Black"
                                   title="Black"
-                                  onClick={() =>
-                                    history.setActiveColors("black", "#000000")
-                                  }
+                                  onClick={() => {
+                                    if (colorDebounceRef.current != null) {
+                                      window.clearTimeout(
+                                        colorDebounceRef.current,
+                                      );
+                                      colorDebounceRef.current = null;
+                                    }
+                                    setDraftColor("#000000");
+                                    history.setActiveColors("black", "#000000");
+                                  }}
                                 />
                                 <button
                                   type="button"
-                                  className={`color-swatch color-swatch--white ${colorMode === "white" || pickerHex.toLowerCase() === "#ffffff" ? "is-active" : ""}`}
+                                  className={`color-swatch color-swatch--white ${colorMode === "white" ? "is-active" : ""}`}
                                   aria-label="White"
                                   title="White"
-                                  onClick={() =>
-                                    history.setActiveColors("white", "#ffffff")
-                                  }
+                                  onClick={() => {
+                                    if (colorDebounceRef.current != null) {
+                                      window.clearTimeout(
+                                        colorDebounceRef.current,
+                                      );
+                                      colorDebounceRef.current = null;
+                                    }
+                                    setDraftColor("#ffffff");
+                                    history.setActiveColors("white", "#ffffff");
+                                  }}
                                 />
                                 <button
                                   type="button"
                                   className={`color-swatch color-swatch--none ${colorMode === "original" ? "is-active" : ""}`}
                                   aria-label="No fill"
                                   title="No fill"
-                                  onClick={() =>
+                                  onClick={() => {
+                                    if (colorDebounceRef.current != null) {
+                                      window.clearTimeout(
+                                        colorDebounceRef.current,
+                                      );
+                                      colorDebounceRef.current = null;
+                                    }
                                     history.setActiveColors(
                                       "original",
                                       customColor,
-                                    )
-                                  }
+                                    );
+                                  }}
                                 >
                                   None
                                 </button>

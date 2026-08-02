@@ -119,39 +119,6 @@ export function recordProcessSample(mp: number, processMs: number) {
   writeStore(store);
 }
 
-/**
- * Map download % + process elapsed into a soft 0–99 display percent.
- * Download occupies the first slice only when the model is still fetching.
- */
-export function blendProgress(opts: {
-  phase: "download" | "process" | null;
-  downloadPercent: number | null;
-  processElapsedMs: number;
-  processEtaMs: number;
-  modelLikelyCached: boolean;
-}): number {
-  const { phase, downloadPercent, processElapsedMs, processEtaMs, modelLikelyCached } =
-    opts;
-
-  const downloadShare = modelLikelyCached ? 0.08 : 0.42;
-
-  if (phase === "download") {
-    const d = Math.min(100, Math.max(0, downloadPercent ?? 0)) / 100;
-    return Math.min(95, d * downloadShare * 100);
-  }
-
-  if (phase === "process" || phase === null) {
-    const base = modelLikelyCached && phase !== "process" ? 0 : downloadShare * 100;
-    const eta = Math.max(400, processEtaMs);
-    // Ease toward 97% so we never sit at 100 before completion.
-    const t = Math.min(1, processElapsedMs / eta);
-    const eased = 1 - Math.pow(1 - t, 1.35);
-    return Math.min(97, base + eased * (97 - base));
-  }
-
-  return 0;
-}
-
 export function modelLikelyCached(): boolean {
   return readStore().samples.length > 0;
 }

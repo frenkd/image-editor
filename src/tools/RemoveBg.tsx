@@ -1,12 +1,22 @@
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { DropZone } from "../components/DropZone";
 import { ToolShell } from "../components/ToolShell";
-import { useObjectUrl } from "../hooks/useObjectUrl";
 import { usePasteImage } from "../hooks/usePasteImage";
-import { downloadDataUrl } from "../lib/image";
+import { useRmbgHistory } from "../hooks/useRmbgHistory";
+import { applyColorOverlay, downloadDataUrl, validateImageFile } from "../lib/image";
+import { RMBG_HISTORY_MAX, type ColorMode } from "../lib/rmbgHistory";
 import type { BgRemoveProgress } from "../lib/rmbg/removeBackground";
 
 type Status = "idle" | "processing" | "ready" | "error";
+
+const COLOR_PRESETS: {
+  id: Exclude<ColorMode, "custom">;
+  label: string;
+}[] = [
+  { id: "original", label: "Original" },
+  { id: "black", label: "Black" },
+  { id: "white", label: "White" },
+];
 
 function progressLabel(p: BgRemoveProgress | null): string {
   if (!p) return "Processing…";
@@ -19,21 +29,86 @@ function progressLabel(p: BgRemoveProgress | null): string {
 }
 
 export function RemoveBg() {
-  const source = useObjectUrl();
-  const [resultUrl, setResultUrl] = useState<string | null>(null);
+  const history = useRmbgHistory();
+  const [pendingSourceUrl, setPendingSourceUrl] = useState<string | null>(null);
+  const pendingObjectUrlRef = useRef<string | null>(null);
   const [status, setStatus] = useState<Status>("idle");
+  const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState<BgRemoveProgress | null>(null);
+  const [displayUrl, setDisplayUrl] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const runIdRef = useRef(0);
 
-  usePasteImage((file) => onFile(file));
+  const active = history.active;
+  const colorMode = active?.colorMode ?? "original";
+  const customColor = active?.customColor ?? "#00a894";
+  const sourceUrl = pendingSourceUrl ?? active?.sourceUrl ?? null;
+  const cutoutUrl = pendingSourceUrl ? null : (active?.cutoutUrl ?? null);
 
-  function run(src: string) {
+  usePasteImage({
+    onFile: (file) => void ingestFile(file),
+    onSrc: (src) => void ingestSrc(src),
+    onError: (message) => {
+      setError(message);
+      setStatus("error");
+    },
+  });
+
+  useEffect(() => {
+    return () => {
+      if (pendingObjectUrlRef.current) {
+        URL.revokeObjectURL(pendingObjectUrlRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!cutoutUrl) {
+      setDisplayUrl(null);
+      return;
+    }
+    if (colorMode === "original") {
+      setDisplayUrl(cutoutUrl);
+      return;
+    }
+    const hex =
+      colorMode === "black"
+        ? "#000000"
+        : colorMode === "white"
+          ? "#ffffff"
+          : customColor;
+    let cancelled = false;
+    applyColorOverlay(cutoutUrl, hex)
+      .then((out) => {
+        if (!cancelled) setDisplayUrl(out);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "Color overlay failed");
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [cutoutUrl, colorMode, customColor]);
+
+  function clearPendingSource() {
+    if (pendingObjectUrlRef.current) {
+      URL.revokeObjectURL(pendingObjectUrlRef.current);
+      pendingObjectUrlRef.current = null;
+    }
+    setPendingSourceUrl(null);
+  }
+
+  function run(
+    src: string,
+    mode: "create" | "replace",
+  ) {
     const runId = ++runIdRef.current;
     setStatus("processing");
-    source.setError(null);
+    setError(null);
     setProgress(null);
-    setResultUrl(null);
+    setDisplayUrl(null);
 
     startTransition(async () => {
       try {
@@ -44,37 +119,72 @@ export function RemoveBg() {
           if (runId === runIdRef.current) setProgress(p);
         });
         if (runId !== runIdRef.current) return;
-        setResultUrl(out);
+
+        if (mode === "replace" && history.activeId) {
+          await history.replaceActiveCutout(out);
+        } else {
+          await history.addEntry({
+            sourceSrc: src,
+            cutoutSrc: out,
+            colorMode: "original",
+            customColor: "#00a894",
+          });
+        }
+        clearPendingSource();
         setStatus("ready");
         setProgress(null);
       } catch (err) {
         if (runId !== runIdRef.current) return;
         setStatus("error");
-        source.setError(err instanceof Error ? err.message : "Removal failed");
+        setError(err instanceof Error ? err.message : "Removal failed");
         setProgress(null);
       }
     });
   }
 
-  function onFile(file: File) {
-    const url = source.setFile(file);
-    setResultUrl(null);
-    if (url) run(url);
+  async function ingestFile(file: File) {
+    const validation = validateImageFile(file);
+    if (validation) {
+      setError(validation);
+      setStatus("error");
+      return;
+    }
+    clearPendingSource();
+    const url = URL.createObjectURL(file);
+    pendingObjectUrlRef.current = url;
+    setPendingSourceUrl(url);
+    run(url, "create");
+  }
+
+  async function ingestSrc(src: string) {
+    clearPendingSource();
+    setPendingSourceUrl(src);
+    run(src, "create");
+  }
+
+  function onSelect(id: string) {
+    if (status === "processing") return;
+    clearPendingSource();
+    history.select(id);
+    setStatus("ready");
+    setError(null);
   }
 
   const busy = status === "processing" || isPending;
-  const err = source.error;
+  const downloadUrl = displayUrl ?? cutoutUrl;
 
   return (
     <ToolShell
       title="Remove background"
-      subtitle="Runs entirely in your browser. First use downloads ~40MB RMBG-1.4 from Hugging Face, then caches it."
+      subtitle="Cut out a subject locally, then optionally recolor the cutout. History stays on this device across refresh."
       actions={
         <button
           type="button"
           className="btn btn--primary"
-          disabled={!resultUrl}
-          onClick={() => resultUrl && downloadDataUrl(resultUrl, "cutout.png")}
+          disabled={!downloadUrl}
+          onClick={() =>
+            downloadUrl && downloadDataUrl(downloadUrl, "cutout.png")
+          }
         >
           Download PNG
         </button>
@@ -84,56 +194,170 @@ export function RemoveBg() {
         <aside className="workspace__side">
           <DropZone
             label="Drop a photo"
-            hint="portraits, product shots, people"
-            onFile={onFile}
+            hint="or Ctrl/Cmd+V an image or image link"
+            onFile={(file) => void ingestFile(file)}
           />
-          {source.url && (
+
+          <div className="control-block">
+            <div className="history-head">
+              <p className="control-label">History</p>
+              <span className="history-count">
+                {history.entries.length}/{RMBG_HISTORY_MAX}
+              </span>
+            </div>
+            {!history.hydrated && (
+              <p className="fineprint">Loading saved cutouts…</p>
+            )}
+            {history.hydrated && history.entries.length === 0 && (
+              <p className="fineprint">
+                Pasted and processed images show up here (kept locally).
+              </p>
+            )}
+            {history.entries.length > 0 && (
+              <ul className="history-list">
+                {history.entries.map((entry, index) => {
+                  const selected =
+                    !pendingSourceUrl && entry.id === history.activeId;
+                  return (
+                    <li key={entry.id}>
+                      <button
+                        type="button"
+                        className={`history-item ${selected ? "is-active" : ""}`}
+                        disabled={busy}
+                        onClick={() => onSelect(entry.id)}
+                      >
+                        <img
+                          src={entry.cutoutUrl}
+                          alt=""
+                          className="history-item__thumb history-item__thumb--checker"
+                        />
+                        <span className="history-item__meta">
+                          <span className="history-item__title">
+                            Cutout {history.entries.length - index}
+                          </span>
+                          <span className="history-item__time">
+                            {new Date(entry.createdAt).toLocaleString([], {
+                              month: "short",
+                              day: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        className="history-item__remove"
+                        aria-label="Remove from history"
+                        disabled={busy}
+                        onClick={() => void history.remove(entry.id)}
+                      >
+                        ×
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+
+          {sourceUrl && (
             <button
               type="button"
               className="btn btn--ghost"
-              disabled={busy}
-              onClick={() => source.url && run(source.url)}
+              disabled={busy || !sourceUrl}
+              onClick={() => {
+                if (!sourceUrl) return;
+                if (pendingSourceUrl) run(sourceUrl, "create");
+                else run(sourceUrl, "replace");
+              }}
             >
               {busy ? "Working…" : "Run again"}
             </button>
           )}
+
+          <div className="control-block">
+            <p className="control-label">Color overlay</p>
+            <div className="chip-row">
+              {COLOR_PRESETS.map((preset) => (
+                <button
+                  key={preset.id}
+                  type="button"
+                  className={`chip ${colorMode === preset.id ? "is-active" : ""}`}
+                  disabled={!cutoutUrl || busy}
+                  onClick={() =>
+                    history.setActiveColors(preset.id, customColor)
+                  }
+                >
+                  {preset.label}
+                </button>
+              ))}
+              <button
+                type="button"
+                className={`chip ${colorMode === "custom" ? "is-active" : ""}`}
+                disabled={!cutoutUrl || busy}
+                onClick={() => history.setActiveColors("custom", customColor)}
+              >
+                Custom
+              </button>
+            </div>
+            <label className="color-picker-row">
+              <input
+                type="color"
+                value={customColor}
+                disabled={!cutoutUrl || busy}
+                onChange={(e) =>
+                  history.setActiveColors("custom", e.target.value)
+                }
+              />
+              <span>{customColor}</span>
+            </label>
+            <p className="fineprint">
+              Recolors the cutout silhouette. Alpha stays; RGB becomes the fill.
+            </p>
+          </div>
+
           {busy && (
             <p className="status-line" role="status">
               {progressLabel(progress)}
             </p>
           )}
-          {err && (
+          {error && (
             <p className="status-line status-line--error" role="alert">
-              {err}
+              {error}
             </p>
           )}
           <p className="fineprint">
-            Model: <code>briaai/RMBG-1.4</code> via Transformers.js. Nothing is
-            uploaded to a server — processing stays on this device.
+            Model: <code>briaai/RMBG-1.4</code>. History is stored in this
+            browser only (IndexedDB).
           </p>
         </aside>
 
         <div className="workspace__stage">
-          {!source.url && !resultUrl && (
+          {!sourceUrl && !cutoutUrl && (
             <div className="stage-empty">
-              Drop or paste an image to knock out the background.
+              Drop, paste an image, or paste an image link to knock out the
+              background.
             </div>
           )}
-          {(source.url || resultUrl) && (
+          {(sourceUrl || cutoutUrl) && (
             <div className="compare">
-              {source.url && (
+              {sourceUrl && (
                 <figure className="compare__panel">
                   <figcaption>Original</figcaption>
                   <div className="compare__frame">
-                    <img src={source.url} alt="Original upload" />
+                    <img src={sourceUrl} alt="Original upload" />
                   </div>
                 </figure>
               )}
               <figure className="compare__panel">
-                <figcaption>Cutout</figcaption>
+                <figcaption>
+                  Cutout
+                  {cutoutUrl && colorMode !== "original" ? " · recolored" : ""}
+                </figcaption>
                 <div className="compare__frame compare__frame--checker">
-                  {resultUrl ? (
-                    <img src={resultUrl} alt="Background removed" />
+                  {displayUrl ? (
+                    <img src={displayUrl} alt="Background removed" />
                   ) : (
                     <div className="stage-empty stage-empty--inset">
                       {busy ? progressLabel(progress) : "Result appears here"}

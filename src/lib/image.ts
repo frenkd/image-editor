@@ -41,31 +41,53 @@ export function cropImageToDataUrl(
   return canvas.toDataURL("image/png");
 }
 
-export type OverlayLayer = {
-  x: number;
-  y: number;
-  scale: number;
-  opacity: number;
-};
+/** Parse `#rgb` / `#rrggbb` into 0–255 channels. */
+export function parseHexColor(hex: string): { r: number; g: number; b: number } {
+  const raw = hex.trim().replace(/^#/, "");
+  const full =
+    raw.length === 3
+      ? raw
+          .split("")
+          .map((c) => c + c)
+          .join("")
+      : raw;
+  if (!/^[0-9a-fA-F]{6}$/.test(full)) {
+    throw new Error("Invalid color");
+  }
+  return {
+    r: parseInt(full.slice(0, 2), 16),
+    g: parseInt(full.slice(2, 4), 16),
+    b: parseInt(full.slice(4, 6), 16),
+  };
+}
 
-export function composeOverlayToDataUrl(
-  base: HTMLImageElement,
-  overlay: HTMLImageElement,
-  layer: OverlayLayer,
-): string {
+/**
+ * Recolor opaque pixels of a cutout PNG while keeping the alpha mask.
+ * Useful for logos: knock out the background, then force black / white / any color.
+ */
+export async function applyColorOverlay(
+  cutoutSrc: string,
+  hex: string,
+): Promise<string> {
+  const image = await loadImage(cutoutSrc);
+  const { r, g, b } = parseHexColor(hex);
+  const w = image.naturalWidth;
+  const h = image.naturalHeight;
   const canvas = document.createElement("canvas");
-  canvas.width = base.naturalWidth;
-  canvas.height = base.naturalHeight;
+  canvas.width = w;
+  canvas.height = h;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas 2D unavailable");
-
-  ctx.drawImage(base, 0, 0);
-  const ow = overlay.naturalWidth * layer.scale;
-  const oh = overlay.naturalHeight * layer.scale;
-  ctx.globalAlpha = Math.min(1, Math.max(0, layer.opacity));
-  ctx.drawImage(overlay, layer.x, layer.y, ow, oh);
-  ctx.globalAlpha = 1;
-
+  ctx.drawImage(image, 0, 0);
+  const pixels = ctx.getImageData(0, 0, w, h);
+  const data = pixels.data;
+  for (let i = 0; i < data.length; i += 4) {
+    if (data[i + 3]! === 0) continue;
+    data[i] = r;
+    data[i + 1] = g;
+    data[i + 2] = b;
+  }
+  ctx.putImageData(pixels, 0, 0);
   return canvas.toDataURL("image/png");
 }
 

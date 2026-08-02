@@ -76,7 +76,14 @@ export function Crop() {
     origin: Rect;
   } | null>(null);
 
-  usePasteImage((file) => onFile(file));
+  usePasteImage({
+    onFile: (file) => onFile(file),
+    onSrc: (src) => {
+      source.setSrc(src);
+      setPreview(null);
+    },
+    onError: (message) => source.setError(message),
+  });
 
   useEffect(() => {
     if (!source.url) {

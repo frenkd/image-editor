@@ -6,7 +6,7 @@ const tools = [
     kicker: "01",
     title: "Remove background",
     description:
-      "Cut subjects out locally with RMBG-1.4 from Hugging Face. First run downloads the model; after that it stays cached in your browser.",
+      "Cut subjects out locally with RMBG-1.4, then recolor the cutout black, white, or any color. First run downloads the model; then it stays cached.",
     meta: "On-device · free",
   },
   {
@@ -17,14 +17,6 @@ const tools = [
       "Trim screenshots and photos with freeform or locked aspect ratios. Built for chopping UI captures and framing subjects.",
     meta: "Aspect presets",
   },
-  {
-    to: "/overlay",
-    kicker: "03",
-    title: "Overlay",
-    description:
-      "Stack a cutout or sticker on a base image. Drag to place, scale and fade opacity, then export a PNG.",
-    meta: "Compose layers",
-  },
 ] as const;
 
 export function Home() {
@@ -34,8 +26,8 @@ export function Home() {
       <header className="home__header">
         <p className="home__brand">Image Editor</p>
         <p className="home__lede">
-          Local-first tools for cutting up screenshots, knocking out
-          backgrounds, and stacking overlays — open source, no upload cloud.
+          Local-first tools for cutting up screenshots and knocking out
+          backgrounds. Open source, no upload cloud.
         </p>
       </header>
 
@@ -57,6 +49,26 @@ export function Home() {
 
       <footer className="home__footer">
         <span>MIT · open source</span>
+        <span>
+          Made by{" "}
+          <a
+            href="https://github.com/frenkd"
+            target="_blank"
+            rel="noreferrer"
+          >
+            frenkd
+          </a>
+        </span>
+        <span>
+          Source on{" "}
+          <a
+            href="https://github.com/frenkd/image-editor"
+            target="_blank"
+            rel="noreferrer"
+          >
+            GitHub
+          </a>
+        </span>
         <span>Models download from Hugging Face on first use</span>
       </footer>
     </div>

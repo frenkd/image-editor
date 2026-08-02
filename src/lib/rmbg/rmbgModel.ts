@@ -41,10 +41,6 @@ export async function configureRmbgEnv(): Promise<void> {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let pipelinePromise: Promise<any> | null = null;
 
-function resetRmbgPipeline(): void {
-  pipelinePromise = null;
-}
-
 /**
  * Load RMBG via `image-segmentation`.
  * Transformers.js v4's `background-removal` task rejects SegformerForSemanticSegmentation.
@@ -70,19 +66,4 @@ export async function ensureRmbgPipeline(
     })();
   }
   return pipelinePromise;
-}
-
-/** Best-effort model load. Returns null on failure and clears the cached promise. */
-export async function tryEnsureRmbgPipeline(
-  onProgress?: (p: RmbgProgress) => void,
-): Promise<unknown | null> {
-  try {
-    return await ensureRmbgPipeline(onProgress);
-  } catch (error) {
-    resetRmbgPipeline();
-    console.warn(
-      `[rmbg] Model unavailable: ${(error as Error).message}`,
-    );
-    return null;
-  }
 }

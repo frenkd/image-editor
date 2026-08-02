@@ -12,7 +12,7 @@ npm run dev
 ## Guidelines
 
 - Keep tools local-first: no required backend for the core edit flows
-- Prefer small, focused PRs (one tool or fix at a time)
+- Prefer small, focused PRs
 - Match existing TypeScript / React patterns
 - Pin `@huggingface/transformers` carefully; `3.4.2` is intentional for RMBG-1.4
 

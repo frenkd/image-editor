@@ -11,7 +11,7 @@ import {
   type StoredHistoryItem,
 } from "../lib/rmbgHistory";
 
-export type HistoryEntry = {
+type HistoryEntry = {
   id: string;
   createdAt: number;
   sourceUrl: string;

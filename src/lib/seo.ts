@@ -1,5 +1,7 @@
 /** Site-wide SEO config and per-page metadata. */
 
+import { FAQ_ITEMS } from "./faq";
+
 export const SITE_URL =
   (import.meta.env.VITE_SITE_URL as string | undefined)?.replace(/\/$/, "") ||
   "https://image-editor-chi-weld.vercel.app";
@@ -11,8 +13,6 @@ export type PageSeo = {
   title: string;
   description: string;
   keywords: string[];
-  /** Optional JSON-LD objects (already plain data). */
-  jsonLd?: Record<string, unknown>[];
 };
 
 export const homeSeo: PageSeo = {
@@ -35,9 +35,6 @@ export const homeSeo: PageSeo = {
     "rmbg",
   ],
 };
-
-/** @deprecated alias of homeSeo for older imports */
-export const removeBgSeo = homeSeo;
 
 export const howItWorksSeo: PageSeo = {
   path: "/how-it-works",
@@ -115,56 +112,14 @@ export function removeBgFaqJsonLd(): Record<string, unknown> {
   return {
     "@context": "https://schema.org",
     "@type": "FAQPage",
-    mainEntity: [
-      {
-        "@type": "Question",
-        name: "Do images leave my device?",
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: "No. Processing runs in your browser. We do not receive your photos.",
-        },
+    mainEntity: FAQ_ITEMS.map((item) => ({
+      "@type": "Question",
+      name: item.q,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: item.a,
       },
-      {
-        "@type": "Question",
-        name: "What about the Hugging Face download?",
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: "That request fetches the model weights, not your image. Your photo never goes to Hugging Face as part of this flow.",
-        },
-      },
-      {
-        "@type": "Question",
-        name: "Is it free?",
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: "Yes. The app is open source, and the cutout runs with the local model in your browser.",
-        },
-      },
-      {
-        "@type": "Question",
-        name: "Why is the first run slow?",
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: "The model has to download and load once. After that it is cached and much quicker.",
-        },
-      },
-      {
-        "@type": "Question",
-        name: "Where are recent cutouts stored?",
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: "In this browser only (IndexedDB). Clearing site data removes them. They are not synced to a server.",
-        },
-      },
-      {
-        "@type": "Question",
-        name: "Can I recolor or crop after removal?",
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: "Yes. After the cutout, use Color or Crop, then download a PNG.",
-        },
-      },
-    ],
+    })),
   };
 }
 

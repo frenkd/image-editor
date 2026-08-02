@@ -5,7 +5,7 @@ import { Faq } from "./pages/Faq";
 import { HowItWorks } from "./pages/HowItWorks";
 import { Privacy } from "./pages/Privacy";
 import { Terms } from "./pages/Terms";
-import { RemoveBg } from "./tools/RemoveBg";
+import { RemoveBg } from "./pages/RemoveBg";
 
 export default function App() {
   return (

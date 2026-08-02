@@ -177,7 +177,7 @@ export function InlineCropper({ imageUrl, onApply, onCancel }: Props) {
         </div>
       </div>
 
-      <div className="workspace__stage workspace__stage--crop">
+      <div className="inline-crop__stage">
         <div className="crop-stage">
           <img
             ref={imgRef}

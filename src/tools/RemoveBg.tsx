@@ -233,10 +233,13 @@ export function RemoveBg() {
       {empty && (
         <div className="studio__hero">
           <DropZone
-            label="Drop image"
-            hint="or paste"
+            hero
+            label="Drop or paste an image"
             onFile={(file) => void ingestFile(file)}
           />
+          <p className="studio__privacy">
+            100% privacy · images stay on your device
+          </p>
           {error && (
             <p className="status-line status-line--error" role="alert">
               {error}
@@ -470,16 +473,21 @@ export function RemoveBg() {
       )}
 
       <footer className="studio__footer">
+        <span>100% privacy · local only</span>
+        <span aria-hidden>·</span>
+        <span>
+          Made by{" "}
+          <a href="https://github.com/frenkd" target="_blank" rel="noreferrer">
+            frenkd
+          </a>
+        </span>
+        <span aria-hidden>·</span>
         <a
           href="https://github.com/frenkd/image-editor"
           target="_blank"
           rel="noreferrer"
         >
           Source
-        </a>
-        <span aria-hidden>·</span>
-        <a href="https://github.com/frenkd" target="_blank" rel="noreferrer">
-          frenkd
         </a>
       </footer>
 
@@ -488,22 +496,23 @@ export function RemoveBg() {
         <summary>FAQ</summary>
         <dl className="faq-list">
           <div>
+            <dt>Is this 100% private?</dt>
+            <dd>
+              Yes. Images never leave your device. Processing and history stay
+              in this browser.
+            </dd>
+          </div>
+          <div>
             <dt>Is this background remover free?</dt>
             <dd>
               Yes. Free and open source. Runs in your browser with no account.
             </dd>
           </div>
           <div>
-            <dt>Are images uploaded?</dt>
+            <dt>How do I add an image?</dt>
             <dd>
-              No. Removal is on-device. History stays in this browser only.
-            </dd>
-          </div>
-          <div>
-            <dt>How do I remove a background?</dt>
-            <dd>
-              Drop or paste an image, wait for the cutout, optionally use Color
-              or Crop, then download a PNG.
+              Drop a file, click to browse, or paste a screenshot, copied image,
+              or image link.
             </dd>
           </div>
         </dl>

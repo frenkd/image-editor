@@ -39,17 +39,20 @@ export function cropImageToDataUrl(
   canvas.height = h;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas 2D unavailable");
-  ctx.drawImage(
-    image,
-    crop.x,
-    crop.y,
-    crop.width,
-    crop.height,
-    0,
-    0,
-    w,
-    h,
-  );
+
+  // Support slight overscan past the image edge (transparent padding).
+  const sx = Math.max(0, crop.x);
+  const sy = Math.max(0, crop.y);
+  const ex = Math.min(image.naturalWidth, crop.x + crop.width);
+  const ey = Math.min(image.naturalHeight, crop.y + crop.height);
+  const sw = ex - sx;
+  const sh = ey - sy;
+  if (sw > 0 && sh > 0) {
+    const dx = sx - crop.x;
+    const dy = sy - crop.y;
+    ctx.drawImage(image, sx, sy, sw, sh, dx, dy, sw, sh);
+  }
+
   return canvas.toDataURL("image/png");
 }
 

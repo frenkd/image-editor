@@ -1,86 +1,48 @@
-import { clampRect, type Rect } from "./cropMath";
+import { clampRect, CROP_OVERSCAN, type Rect } from "./cropMath";
 
 /**
- * Rule 1 — Outliers: when finding the alpha content box, ignore up to this many
- * content pixels on each edge (row/column projection). Tiny speckles and
- * cutout artefacts outside the subject get trimmed away.
+ * Rule 1 — Solid content only: alpha below this is empty.
+ * Kills soft RMBG ghosts, faint UI chrome, and nearly-transparent speckles.
  */
-export const EDGE_OUTLIER_BUDGET = 48;
+export const CONTENT_ALPHA = 56;
 
 /**
- * Rule 2 — Padding: expand the trimmed content box by this fraction of its
- * width/height on each side (~1.5%, between 1–2%).
+ * Rule 1b — Blob filter: keep the largest solid connected component, plus any
+ * other blobs that are at least this fraction of the largest (usually hair/parts
+ * of the same subject). Tiny remote artefacts are dropped.
  */
-export const CONTENT_PADDING_RATIO = 0.015;
+export const MIN_BLOB_FRACTION = 0.04;
 
-/** Alpha at or above this counts as opaque content. */
-const CONTENT_ALPHA = 12;
+/**
+ * Rule 2 — Padding: expand the content box by this fraction of the *original*
+ * image size on each side (a little breathing room, not pixel-tight).
+ * Hard-capped by CROP_OVERSCAN (5%) in cropMath.
+ */
+export const CONTENT_PAD_OF_IMAGE = 0.03;
 
-/** Tight content crop from image alpha, with outlier trim + padding. */
+const MIN_BLOB_AREA = 96;
+
+/** Tight content crop from image alpha, with blob filter + padded overscan. */
 export function contentCropRect(image: ImageData): Rect | null {
   const { width: w, height: h, data } = image;
-  const colCounts = new Uint32Array(w);
-  const rowCounts = new Uint32Array(h);
-  let total = 0;
+  const bounds = solidBlobBounds(data, w, h);
+  if (!bounds) return null;
 
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      if (data[(y * w + x) * 4 + 3]! >= CONTENT_ALPHA) {
-        colCounts[x]!++;
-        rowCounts[y]!++;
-        total++;
-      }
-    }
-  }
-
-  if (total === 0) return null;
-
-  // Cap the budget on small cutouts so we don't chew into real content.
-  const outlierBudget = Math.min(
-    EDGE_OUTLIER_BUDGET,
-    Math.max(8, Math.floor(total * 0.001)),
-  );
-
-  let top = 0;
-  let acc = 0;
-  while (top < h && acc + rowCounts[top]! <= outlierBudget) {
-    acc += rowCounts[top]!;
-    top++;
-  }
-
-  let bottom = h - 1;
-  acc = 0;
-  while (bottom >= top && acc + rowCounts[bottom]! <= outlierBudget) {
-    acc += rowCounts[bottom]!;
-    bottom--;
-  }
-
-  let left = 0;
-  acc = 0;
-  while (left < w && acc + colCounts[left]! <= outlierBudget) {
-    acc += colCounts[left]!;
-    left++;
-  }
-
-  let right = w - 1;
-  acc = 0;
-  while (right >= left && acc + colCounts[right]! <= outlierBudget) {
-    acc += colCounts[right]!;
-    right--;
-  }
-
-  if (right < left || bottom < top) return null;
-
+  const { left, top, right, bottom } = bounds;
   const boxW = right - left + 1;
   const boxH = bottom - top + 1;
-  // Nearly full-frame opacity → not a useful cutout mask; let caller fall back.
-  if (boxW >= w * 0.98 && boxH >= h * 0.98 && total >= w * h * 0.95) {
-    return null;
-  }
 
-  const padX = Math.max(1, Math.round(boxW * CONTENT_PADDING_RATIO));
-  const padY = Math.max(1, Math.round(boxH * CONTENT_PADDING_RATIO));
+  // Nearly full-frame solid → not a useful cutout mask.
+  if (boxW >= w * 0.98 && boxH >= h * 0.98) return null;
 
+  const padX = Math.round(
+    Math.min(w * CROP_OVERSCAN, Math.max(2, w * CONTENT_PAD_OF_IMAGE)),
+  );
+  const padY = Math.round(
+    Math.min(h * CROP_OVERSCAN, Math.max(2, h * CONTENT_PAD_OF_IMAGE)),
+  );
+
+  // Intentionally may extend past the image; clampRect allows ≤5% overscan.
   return clampRect(
     {
       x: left - padX,
@@ -91,6 +53,107 @@ export function contentCropRect(image: ImageData): Rect | null {
     w,
     h,
   );
+}
+
+type Bounds = { left: number; top: number; right: number; bottom: number };
+
+/** Bounding box of the main solid alpha blob(s), ignoring tiny outliers. */
+function solidBlobBounds(
+  data: Uint8ClampedArray,
+  w: number,
+  h: number,
+): Bounds | null {
+  const n = w * h;
+  const solid = new Uint8Array(n);
+  let solidCount = 0;
+  for (let i = 0; i < n; i++) {
+    if (data[i * 4 + 3]! >= CONTENT_ALPHA) {
+      solid[i] = 1;
+      solidCount++;
+    }
+  }
+  if (solidCount === 0) return null;
+
+  const labels = new Int32Array(n);
+  const areas: number[] = [0];
+  let nextLabel = 1;
+  const stack = new Int32Array(solidCount);
+  let stackLen = 0;
+
+  for (let i = 0; i < n; i++) {
+    if (!solid[i] || labels[i]) continue;
+    const label = nextLabel++;
+    areas[label] = 0;
+    stackLen = 0;
+    stack[stackLen++] = i;
+    labels[i] = label;
+
+    while (stackLen > 0) {
+      const p = stack[--stackLen]!;
+      areas[label]!++;
+      const x = p % w;
+      const y = (p / w) | 0;
+
+      // 4-connected — enough for cutout subjects, cheaper than 8.
+      if (x > 0) {
+        const ni = p - 1;
+        if (solid[ni] && !labels[ni]) {
+          labels[ni] = label;
+          stack[stackLen++] = ni;
+        }
+      }
+      if (x + 1 < w) {
+        const ni = p + 1;
+        if (solid[ni] && !labels[ni]) {
+          labels[ni] = label;
+          stack[stackLen++] = ni;
+        }
+      }
+      if (y > 0) {
+        const ni = p - w;
+        if (solid[ni] && !labels[ni]) {
+          labels[ni] = label;
+          stack[stackLen++] = ni;
+        }
+      }
+      if (y + 1 < h) {
+        const ni = p + w;
+        if (solid[ni] && !labels[ni]) {
+          labels[ni] = label;
+          stack[stackLen++] = ni;
+        }
+      }
+    }
+  }
+
+  if (nextLabel === 1) return null;
+
+  let maxArea = 0;
+  for (let L = 1; L < nextLabel; L++) {
+    if (areas[L]! > maxArea) maxArea = areas[L]!;
+  }
+  const minKeep = Math.max(
+    MIN_BLOB_AREA,
+    Math.floor(maxArea * MIN_BLOB_FRACTION),
+  );
+
+  let left = w;
+  let right = -1;
+  let top = h;
+  let bottom = -1;
+  for (let i = 0; i < n; i++) {
+    const L = labels[i]!;
+    if (!L || areas[L]! < minKeep) continue;
+    const x = i % w;
+    const y = (i / w) | 0;
+    if (x < left) left = x;
+    if (x > right) right = x;
+    if (y < top) top = y;
+    if (y > bottom) bottom = y;
+  }
+
+  if (right < left || bottom < top) return null;
+  return { left, top, right, bottom };
 }
 
 /** Grow/shrink a content rect to an aspect ratio, centered on the content. */
@@ -113,12 +176,14 @@ export function fitCropToContent(
     width = height * ratio;
   }
 
-  if (width > iw) {
-    width = iw;
+  const maxW = iw * (1 + 2 * CROP_OVERSCAN);
+  const maxH = ih * (1 + 2 * CROP_OVERSCAN);
+  if (width > maxW) {
+    width = maxW;
     height = width / ratio;
   }
-  if (height > ih) {
-    height = ih;
+  if (height > maxH) {
+    height = maxH;
     width = height * ratio;
   }
 

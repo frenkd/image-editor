@@ -13,12 +13,22 @@ export type CropHandle =
 
 const MIN = 16;
 
+/** Crop may overhang each image edge by up to this fraction of image size. */
+export const CROP_OVERSCAN = 0.05;
+
+function overscan(iw: number, ih: number) {
+  return { padX: iw * CROP_OVERSCAN, padY: ih * CROP_OVERSCAN };
+}
+
 export function clampRect(r: Rect, iw: number, ih: number): Rect {
+  const { padX, padY } = overscan(iw, ih);
+  const maxW = iw + 2 * padX;
+  const maxH = ih + 2 * padY;
   let { x, y, width, height } = r;
-  width = Math.max(MIN, Math.min(width, iw));
-  height = Math.max(MIN, Math.min(height, ih));
-  x = Math.max(0, Math.min(x, iw - width));
-  y = Math.max(0, Math.min(y, ih - height));
+  width = Math.max(MIN, Math.min(width, maxW));
+  height = Math.max(MIN, Math.min(height, maxH));
+  x = Math.max(-padX, Math.min(x, iw + padX - width));
+  y = Math.max(-padY, Math.min(y, ih + padY - height));
   return { x, y, width, height };
 }
 
@@ -89,6 +99,7 @@ function resizeFree(
   iw: number,
   ih: number,
 ): Rect {
+  const { padX, padY } = overscan(iw, ih);
   let left = origin.x;
   let top = origin.y;
   let right = origin.x + origin.width;
@@ -108,18 +119,18 @@ function resizeFree(
     else bottom = top + MIN;
   }
 
-  left = Math.max(0, left);
-  top = Math.max(0, top);
-  right = Math.min(iw, right);
-  bottom = Math.min(ih, bottom);
+  left = Math.max(-padX, left);
+  top = Math.max(-padY, top);
+  right = Math.min(iw + padX, right);
+  bottom = Math.min(ih + padY, bottom);
 
   if (right - left < MIN) {
-    if (handle.includes("w")) left = Math.max(0, right - MIN);
-    else right = Math.min(iw, left + MIN);
+    if (handle.includes("w")) left = Math.max(-padX, right - MIN);
+    else right = Math.min(iw + padX, left + MIN);
   }
   if (bottom - top < MIN) {
-    if (handle.includes("n")) top = Math.max(0, bottom - MIN);
-    else bottom = Math.min(ih, top + MIN);
+    if (handle.includes("n")) top = Math.max(-padY, bottom - MIN);
+    else bottom = Math.min(ih + padY, top + MIN);
   }
 
   return {
@@ -139,56 +150,43 @@ function resizeLocked(
   iw: number,
   ih: number,
 ): Rect {
+  const { padX, padY } = overscan(iw, ih);
+  const maxW = iw + 2 * padX;
+  const maxH = ih + 2 * padY;
   const cx = origin.x + origin.width / 2;
   const cy = origin.y + origin.height / 2;
 
-  // Fixed corner opposite the dragged handle.
   const fixX = handle.includes("w") ? origin.x + origin.width : origin.x;
   const fixY = handle.includes("n") ? origin.y + origin.height : origin.y;
 
   if (handle === "e" || handle === "w") {
     let width = handle === "e" ? origin.width + dx : origin.width - dx;
-    width = Math.max(MIN, width);
+    width = Math.max(MIN, Math.min(width, maxW));
     let height = width / ratio;
-
-    if (width > iw) {
-      width = iw;
-      height = width / ratio;
-    }
-    if (height > ih) {
-      height = ih;
+    if (height > maxH) {
+      height = maxH;
       width = height * ratio;
     }
 
     let x = handle === "e" ? origin.x : origin.x + origin.width - width;
     let y = cy - height / 2;
-    x = Math.max(0, Math.min(x, iw - width));
-    y = Math.max(0, Math.min(y, ih - height));
-    return { x, y, width, height };
+    return clampRect({ x, y, width, height }, iw, ih);
   }
 
   if (handle === "n" || handle === "s") {
     let height = handle === "s" ? origin.height + dy : origin.height - dy;
-    height = Math.max(MIN, height);
+    height = Math.max(MIN, Math.min(height, maxH));
     let width = height * ratio;
-
-    if (height > ih) {
-      height = ih;
-      width = height * ratio;
-    }
-    if (width > iw) {
-      width = iw;
+    if (width > maxW) {
+      width = maxW;
       height = width / ratio;
     }
 
     let y = handle === "s" ? origin.y : origin.y + origin.height - height;
     let x = cx - width / 2;
-    x = Math.max(0, Math.min(x, iw - width));
-    y = Math.max(0, Math.min(y, ih - height));
-    return { x, y, width, height };
+    return clampRect({ x, y, width, height }, iw, ih);
   }
 
-  // Corners: size from pointer vs fixed corner, keep ratio pinned to that corner.
   const pointerX =
     (handle.includes("e") ? origin.x + origin.width : origin.x) + dx;
   const pointerY =
@@ -206,9 +204,16 @@ function resizeLocked(
   width = Math.max(MIN, width);
   height = width / ratio;
 
-  const maxW = handle.includes("e") ? iw - fixX : fixX;
-  const maxH = handle.includes("s") ? ih - fixY : fixY;
-  const maxWidth = Math.max(MIN, Math.min(maxW, maxH * ratio));
+  const maxWidthFromFix = handle.includes("e")
+    ? iw + padX - fixX
+    : fixX - -padX;
+  const maxHeightFromFix = handle.includes("s")
+    ? ih + padY - fixY
+    : fixY - -padY;
+  const maxWidth = Math.max(
+    MIN,
+    Math.min(maxWidthFromFix, maxHeightFromFix * ratio, maxW),
+  );
   if (width > maxWidth) {
     width = maxWidth;
     height = width / ratio;
@@ -217,10 +222,5 @@ function resizeLocked(
   const x = handle.includes("w") ? fixX - width : fixX;
   const y = handle.includes("n") ? fixY - height : fixY;
 
-  return {
-    x: Math.max(0, Math.min(x, iw - width)),
-    y: Math.max(0, Math.min(y, ih - height)),
-    width,
-    height,
-  };
+  return clampRect({ x, y, width, height }, iw, ih);
 }

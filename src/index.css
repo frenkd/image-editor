@@ -646,6 +646,7 @@ label.btn {
   background: #111418;
   place-items: center;
   align-content: center;
+  overflow: visible;
 }
 
 .studio__stage.is-drop-target {
@@ -1088,6 +1089,8 @@ label.btn {
   line-height: 0;
   user-select: none;
   touch-action: none;
+  /* Let the crop frame overhang a little past the bitmap for padding. */
+  overflow: visible;
 }
 
 .crop-stage__img {

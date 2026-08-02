@@ -11,9 +11,23 @@
   ],
   "capabilities": {
     "background_removal": {
-      "cli": "npm run remove-bg -- <input> [output.png] [--color #rrggbb]",
+      "cli": "npm run remove-bg -- <input> [output.png] [options]",
+      "options": [
+        "--color #rrggbb",
+        "--crop auto",
+        "--crop x,y,w,h",
+        "--pad 0.03",
+        "--remove-speckles",
+        "--fill-holes",
+        "--fill-holes=all",
+        "--solid",
+        "--advanced",
+        "--mode ink",
+        "--ink-max 96"
+      ],
       "repository": "https://github.com/frenkd/image-editor",
-      "web_deep_link": "https://cutbg.vercel.app/?src=<image-url>",
+      "web_deep_link": "https://cutbg.vercel.app/?src=<image-url>&color=%2300a894&crop=auto&advanced=1",
+      "web_query_params": ["src", "url", "image", "color", "fill", "crop", "advanced", "speckles", "fill-holes"],
       "model": "briaai/RMBG-1.4",
       "uploads_images_to_site": false
     }

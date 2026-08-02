@@ -31,6 +31,6 @@ export const FAQ_ITEMS = [
   },
   {
     q: "Can AI agents use this?",
-    a: "Yes. Agents should read /llms.txt and /agents.txt. Preferred path: clone the GitHub repo and run npm run remove-bg -- <file-or-url> [out.png]. The web app also accepts /?src=<image-url> when CORS allows the image. See the remove-background skill linked from agents.txt.",
+    a: "Yes. Read /llms.txt and /agents.txt. Preferred path: clone the repo and run npm run remove-bg -- <file-or-url> [out.png] with optional --color, --crop auto, --advanced, --fill-holes, --mode ink, and --solid. The web app accepts /?src=<image-url>&color=&crop=auto&advanced=1 when CORS allows the image. Full flags are in the remove-background skill.",
   },
 ] as const;

@@ -26,11 +26,13 @@ Remove a background from a local file or image URL (writes a PNG):
 
 ```bash
 npm run remove-bg -- ./photo.jpg
-npm run remove-bg -- https://example.com/car.jpg ./car.png
-npm run remove-bg -- ./logo.jpg ./logo.png --color #00a894
+npm run remove-bg -- ./car.jpg ./car.png --crop auto --advanced
+npm run remove-bg -- ./logo.jpg ./logo.png --mode ink --color #00a894 --crop auto
 ```
 
-Agent discovery files on the deployed site: [`/llms.txt`](https://cutbg.vercel.app/llms.txt), [`/agents.txt`](https://cutbg.vercel.app/agents.txt). Web deep link: `/?src=<image-url>`.
+Options include `--color`, `--crop auto`, `--advanced`, `--fill-holes`, `--solid`, and `--mode ink`. See [`/agent-skills/remove-background/SKILL.md`](https://cutbg.vercel.app/agent-skills/remove-background/SKILL.md).
+
+Agent discovery: [`/llms.txt`](https://cutbg.vercel.app/llms.txt), [`/agents.txt`](https://cutbg.vercel.app/agents.txt). Web deep link: `/?src=<image-url>&color=%2300a894&crop=auto&advanced=1`.
 
 ## Notes
 

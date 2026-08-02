@@ -91,11 +91,20 @@ export function useRmbgHistory() {
       cutoutSrc: string;
       colorMode: ColorMode;
       customColor: string;
+      crop?: Rect | null;
     }) => {
       const [source, cutout] = await Promise.all([
         blobFromSrc(input.sourceSrc),
         blobFromSrc(input.cutoutSrc),
       ]);
+      const crop = input.crop
+        ? {
+            x: input.crop.x,
+            y: input.crop.y,
+            width: input.crop.width,
+            height: input.crop.height,
+          }
+        : null;
       const stored: StoredHistoryItem = {
         id: newHistoryId(),
         createdAt: Date.now(),
@@ -103,7 +112,7 @@ export function useRmbgHistory() {
         cutout,
         colorMode: input.colorMode,
         customColor: input.customColor,
-        crop: null,
+        crop,
       };
       await putHistoryItem(stored);
       const entry = toEntry(stored);

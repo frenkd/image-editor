@@ -44,13 +44,13 @@ const USE_CASES: UseCase[] = [
   {
     id: "logo",
     title: "Clean and recolor a logo",
-    lead: "Strip a busy desk photo, then apply a brand color fill.",
+    lead: "Lift black ink off paper, then fill it with a brand color.",
     before: "/use-cases/logo-before.jpg",
     after: "/use-cases/logo-after.webp",
-    beforeAlt: "Black logo on a cluttered desk before background removal",
-    afterAlt: "Same logo on a transparent background with a teal color overlay",
+    beforeAlt: "Black PEAK logo printed on textured cream paper",
+    afterAlt: "PEAK logo cut out and recolored orange on a transparent background",
     afterLabel: "After + color",
-    body: "Remove the background first, then recolor the ink (web Color tool, or CLI --color). Handy for marks scanned or photographed on paper.",
+    body: "Start from a paper scan or photo of black ink. Agents: npm run remove-bg -- logo.jpg out.png --mode ink --color #e85d04 --crop auto. In the web UI, remove the background then use Color.",
   },
 ];
 

@@ -12,12 +12,17 @@ import { Seo } from "../components/Seo";
 import { SiteFooter } from "../components/SiteFooter";
 import { usePasteImage } from "../hooks/usePasteImage";
 import { useRmbgHistory } from "../hooks/useRmbgHistory";
+import {
+  contentCropRect,
+  imageDataFromElement,
+} from "../lib/contentBounds";
 import type { Rect } from "../lib/cropMath";
 import {
   applyColorOverlay,
   cropSrcToDataUrl,
   downloadDataUrl,
   formatImageSize,
+  loadImage,
   readImageSize,
   validateImageFile,
   type ImageSize,
@@ -49,6 +54,65 @@ type Status = "idle" | "processing" | "ready" | "error";
 type ViewMode = "result" | "compare";
 type StudioMode = "view" | "crop" | "new";
 type OpenMenu = "none" | "color" | "advanced";
+
+type AgentDeepLink = {
+  color: string | null;
+  crop: "auto" | Rect | null;
+  cleanup: MaskCleanupOptions | null;
+};
+
+function parseTruthy(v: string | null): boolean {
+  if (v == null) return false;
+  const t = v.trim().toLowerCase();
+  return t === "" || t === "1" || t === "true" || t === "yes" || t === "on";
+}
+
+function parseHexColor(raw: string | null): string | null {
+  if (!raw) return null;
+  const m = raw.trim().match(/^#?([0-9a-f]{6})$/i);
+  return m ? `#${m[1]!.toLowerCase()}` : null;
+}
+
+function parseCropParam(raw: string | null): "auto" | Rect | null {
+  if (!raw) return null;
+  const v = raw.trim().toLowerCase();
+  if (v === "auto" || v === "1" || v === "true") return "auto";
+  const parts = raw.split(",").map((p) => Number(p.trim()));
+  if (
+    parts.length === 4 &&
+    parts.every((n) => Number.isFinite(n)) &&
+    parts[2]! > 0 &&
+    parts[3]! > 0
+  ) {
+    return {
+      x: parts[0]!,
+      y: parts[1]!,
+      width: parts[2]!,
+      height: parts[3]!,
+    };
+  }
+  return null;
+}
+
+function readAgentDeepLink(params: URLSearchParams): AgentDeepLink {
+  const color =
+    parseHexColor(params.get("color")) || parseHexColor(params.get("fill"));
+  const crop = parseCropParam(params.get("crop"));
+  const advanced = parseTruthy(params.get("advanced"));
+  const speckles =
+    advanced ||
+    parseTruthy(params.get("speckles")) ||
+    parseTruthy(params.get("remove-speckles"));
+  const fillHoles =
+    advanced ||
+    parseTruthy(params.get("fill-holes")) ||
+    parseTruthy(params.get("fillHoles"));
+  const cleanup =
+    speckles || fillHoles
+      ? { removeSpeckles: speckles, fillHoles }
+      : null;
+  return { color, crop, cleanup };
+}
 
 function readCleanupPrefs(): MaskCleanupOptions {
   try {
@@ -86,6 +150,7 @@ export function RemoveBg() {
   const history = useRmbgHistory();
   const [searchParams, setSearchParams] = useSearchParams();
   const agentSrcConsumed = useRef(false);
+  const agentDeepLinkRef = useRef<AgentDeepLink | null>(null);
   const [pendingSourceUrl, setPendingSourceUrl] = useState<string | null>(null);
   const pendingObjectUrlRef = useRef<string | null>(null);
   const [status, setStatus] = useState<Status>("idle");
@@ -343,18 +408,42 @@ export function RemoveBg() {
           );
         }
 
+        const agent = agentDeepLinkRef.current;
+        agentDeepLinkRef.current = null;
+        let colorMode: "original" | "custom" | "black" | "white" = "original";
+        let customColor = "#00a894";
+        if (agent?.color) {
+          colorMode = "custom";
+          customColor = agent.color;
+          setDraftColor(agent.color);
+        }
+
+        let crop: Rect | null = null;
+        if (agent?.crop === "auto") {
+          try {
+            const img = await loadImage(out);
+            crop = contentCropRect(imageDataFromElement(img));
+          } catch {
+            crop = null;
+          }
+        } else if (agent?.crop) {
+          crop = agent.crop;
+        }
+
         if (mode === "replace" && history.activeId) {
           await history.replaceActiveCutout(out, {
-            colorMode: "original",
-            customColor: "#00a894",
+            colorMode,
+            customColor,
             clearCrop: true,
           });
+          if (crop) history.setActiveCrop(crop);
         } else {
           await history.addEntry({
             sourceSrc: src,
             cutoutSrc: out,
-            colorMode: "original",
-            customColor: "#00a894",
+            colorMode,
+            customColor,
+            crop,
           });
         }
         clearPendingSource();
@@ -391,7 +480,7 @@ export function RemoveBg() {
   const ingestSrcRef = useRef(ingestSrc);
   ingestSrcRef.current = ingestSrc;
 
-  /** Agent / deep-link: /?src=https://…image.jpg starts removal once. */
+  /** Agent / deep-link: /?src=…&color=&crop=auto&advanced=1 */
   useEffect(() => {
     if (agentSrcConsumed.current || !history.hydrated || busy) return;
     const src =
@@ -400,10 +489,29 @@ export function RemoveBg() {
       searchParams.get("image");
     if (!src?.trim()) return;
     agentSrcConsumed.current = true;
+    const agent = readAgentDeepLink(searchParams);
+    agentDeepLinkRef.current = agent;
+    if (agent.cleanup) {
+      setCleanup(agent.cleanup);
+      cleanupRef.current = agent.cleanup;
+      writeCleanupPrefs(agent.cleanup);
+    }
     const next = new URLSearchParams(searchParams);
-    next.delete("src");
-    next.delete("url");
-    next.delete("image");
+    for (const key of [
+      "src",
+      "url",
+      "image",
+      "color",
+      "fill",
+      "crop",
+      "advanced",
+      "speckles",
+      "remove-speckles",
+      "fill-holes",
+      "fillHoles",
+    ]) {
+      next.delete(key);
+    }
     setSearchParams(next, { replace: true });
     void ingestSrcRef.current(src.trim());
   }, [history.hydrated, searchParams, setSearchParams, busy]);

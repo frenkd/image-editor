@@ -13,12 +13,15 @@ Clone https://github.com/frenkd/image-editor then:
 
 ```bash
 npm install
-npm run remove-bg -- <input-or-url> [output.png] [--color #rrggbb]
+npm run remove-bg -- <input-or-url> [output.png] [options]
 ```
+
+Useful options: `--color #rrggbb`, `--crop auto`, `--advanced`, `--fill-holes`, `--fill-holes=all`, `--solid`, `--mode ink`, `--ink-max 96`.
+See the remove-background skill for the full flag list and logo vs photo tips.
 
 ## Web
 - App: https://cutbg.vercel.app/
-- Deep link: https://cutbg.vercel.app/?src=<image-url>
+- Deep link: https://cutbg.vercel.app/?src=<image-url>&color=%2300a894&crop=auto&advanced=1
 
 ## Docs
 - [How it works](https://cutbg.vercel.app/how-it-works)

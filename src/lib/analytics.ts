@@ -67,3 +67,35 @@ export function trackAgentGuideView() {
     /* ignore */
   }
 }
+
+function safeTrack(
+  name: string,
+  data?: Record<string, string | number | boolean | null>,
+) {
+  try {
+    track(name, data);
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Color tool: swatch or picker applied (not every drag of the picker). */
+export function trackColorApply(mode: "custom" | "black" | "white" | "original") {
+  safeTrack("tool_color", { mode });
+}
+
+/** Crop applied or cleared. */
+export function trackCropApply(action: "apply" | "revert") {
+  safeTrack("tool_crop", { action });
+}
+
+/** Advanced mask cleanup applied to the current cutout. */
+export function trackAdvancedApply(opts: {
+  removeSpeckles: boolean;
+  fillHoles: boolean;
+}) {
+  safeTrack("tool_advanced", {
+    remove_speckles: opts.removeSpeckles,
+    fill_holes: opts.fillHoles,
+  });
+}

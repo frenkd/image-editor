@@ -43,6 +43,9 @@ import {
 } from "../lib/rmbgTiming";
 import {
   resolveCutoutClient,
+  trackAdvancedApply,
+  trackColorApply,
+  trackCropApply,
   trackCutoutStart,
   type CutoutClient,
 } from "../lib/analytics";
@@ -468,6 +471,14 @@ export function RemoveBg() {
             crop,
           });
         }
+        if (agent?.color) trackColorApply("custom");
+        if (crop) trackCropApply("apply");
+        if (agent?.cleanup) {
+          trackAdvancedApply({
+            removeSpeckles: agent.cleanup.removeSpeckles,
+            fillHoles: agent.cleanup.fillHoles,
+          });
+        }
         clearPendingSource();
         setStatus("ready");
         setProgress(null);
@@ -558,6 +569,7 @@ export function RemoveBg() {
 
   function applyCrop(next: Rect) {
     history.setActiveCrop(next);
+    trackCropApply("apply");
     setStudioMode("view");
     setViewMode("result");
     setOpenMenu("none");
@@ -565,6 +577,7 @@ export function RemoveBg() {
 
   function revertCrop() {
     history.setActiveCrop(null);
+    trackCropApply("revert");
     setStudioMode("view");
     setViewMode("result");
     setOpenMenu("none");
@@ -577,6 +590,7 @@ export function RemoveBg() {
     }
     colorDebounceRef.current = window.setTimeout(() => {
       history.setActiveColors("custom", hex);
+      trackColorApply("custom");
       colorDebounceRef.current = null;
     }, COLOR_DEBOUNCE_MS);
   }
@@ -597,6 +611,10 @@ export function RemoveBg() {
     try {
       const cleaned = await cleanCutoutDataUrl(cutoutUrl, cleanup);
       await history.replaceActiveCutout(cleaned);
+      trackAdvancedApply({
+        removeSpeckles: cleanup.removeSpeckles,
+        fillHoles: cleanup.fillHoles,
+      });
       setStatus("ready");
     } catch (err) {
       setStatus("error");
@@ -885,6 +903,7 @@ export function RemoveBg() {
                                     }
                                     setDraftColor("#000000");
                                     history.setActiveColors("black", "#000000");
+                                    trackColorApply("black");
                                   }}
                                 />
                                 <button
@@ -901,6 +920,7 @@ export function RemoveBg() {
                                     }
                                     setDraftColor("#ffffff");
                                     history.setActiveColors("white", "#ffffff");
+                                    trackColorApply("white");
                                   }}
                                 />
                                 <button
@@ -919,6 +939,7 @@ export function RemoveBg() {
                                       "original",
                                       customColor,
                                     );
+                                    trackColorApply("original");
                                   }}
                                 >
                                   None

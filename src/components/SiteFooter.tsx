@@ -5,12 +5,10 @@ export function SiteFooter() {
     <footer className="studio__footer">
       <span>
         Made by{" "}
-        <a href="https://github.com/frenkd" target="_blank" rel="noreferrer">
+        <a href="https://frenkd.github.io/" target="_blank" rel="noreferrer">
           frenkd
         </a>
       </span>
-      <span aria-hidden>·</span>
-      <Link to="/how-it-works">How it works</Link>
       <span aria-hidden>·</span>
       <Link to="/faq">FAQ</Link>
       <span aria-hidden>·</span>

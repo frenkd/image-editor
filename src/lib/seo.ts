@@ -41,9 +41,9 @@ export const removeBgSeo = homeSeo;
 
 export const howItWorksSeo: PageSeo = {
   path: "/how-it-works",
-  title: "How Local Background Removal Works (Hugging Face Model in Your Browser)",
+  title: "How Local Background Removal Works",
   description:
-    "Plain-language guide to how this free background remover downloads an open Hugging Face model once, then cuts out images on your device with no upload.",
+    "Paste an image, download an open Hugging Face model once, cut out the background on your device, then download a PNG.",
   keywords: [
     "how background removal works",
     "local ai background remover",
@@ -52,6 +52,35 @@ export const howItWorksSeo: PageSeo = {
     "on device image cutout",
     "no upload background remover",
   ],
+};
+
+export const faqSeo: PageSeo = {
+  path: "/faq",
+  title: "Background Remover FAQ",
+  description:
+    "Answers about local AI background removal: privacy, Hugging Face model download, speed, storage, color, and crop.",
+  keywords: [
+    "background remover faq",
+    "remove background privacy",
+    "local background removal",
+    "rmbg faq",
+  ],
+};
+
+export const privacySeo: PageSeo = {
+  path: "/privacy",
+  title: "Privacy Policy",
+  description:
+    "How this local background remover handles images, browser storage, model downloads, and analytics.",
+  keywords: ["privacy policy", "local background remover privacy"],
+};
+
+export const termsSeo: PageSeo = {
+  path: "/terms",
+  title: "Terms of Use",
+  description:
+    "Short terms for using this free open-source browser background remover.",
+  keywords: ["terms of use", "background remover terms"],
 };
 
 export function absoluteUrl(path: string): string {
@@ -89,34 +118,50 @@ export function removeBgFaqJsonLd(): Record<string, unknown> {
     mainEntity: [
       {
         "@type": "Question",
-        name: "Is this background remover free?",
+        name: "Do images leave my device?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "Yes. The remove image background tool is free and open source. Processing runs in your browser on your device.",
+          text: "No. Processing runs in your browser. We do not receive your photos.",
         },
       },
       {
         "@type": "Question",
-        name: "Do my images get uploaded?",
+        name: "What about the Hugging Face download?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "No. Nothing is uploaded. Background removal runs on-device in your browser; history stays on your computer.",
+          text: "That request fetches the model weights, not your image. Your photo never goes to Hugging Face as part of this flow.",
         },
       },
       {
         "@type": "Question",
-        name: "How do I remove a photo or logo background?",
+        name: "Is it free?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "Open the remove background tool, drop or paste an image (or paste an image link), wait for the cutout, optionally recolor it, then download a transparent PNG.",
+          text: "Yes. The app is open source, and the cutout runs with the local model in your browser.",
         },
       },
       {
         "@type": "Question",
-        name: "Can I make a cutout logo black or white?",
+        name: "Why is the first run slow?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "Yes. After background removal, use the color overlay controls to fill the cutout black, white, or any custom color while keeping transparency.",
+          text: "The model has to download and load once. After that it is cached and much quicker.",
+        },
+      },
+      {
+        "@type": "Question",
+        name: "Where are recent cutouts stored?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "In this browser only (IndexedDB). Clearing site data removes them. They are not synced to a server.",
+        },
+      },
+      {
+        "@type": "Question",
+        name: "Can I recolor or crop after removal?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Yes. After the cutout, use Color or Crop, then download a PNG.",
         },
       },
     ],

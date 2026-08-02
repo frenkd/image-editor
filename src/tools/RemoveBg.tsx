@@ -24,7 +24,6 @@ import { RMBG_HISTORY_MAX, type ColorMode } from "../lib/rmbgHistory";
 import type { BgRemoveProgress } from "../lib/rmbg/removeBackground";
 import {
   homeSeo,
-  removeBgFaqJsonLd,
   softwareAppJsonLd,
   webAppJsonLd,
 } from "../lib/seo";
@@ -32,7 +31,7 @@ import {
 type Status = "idle" | "processing" | "ready" | "error";
 type ViewMode = "result" | "compare";
 type StudioMode = "view" | "crop";
-type OpenMenu = "none" | "recent" | "color";
+type OpenMenu = "none" | "color";
 
 const COLOR_PRESETS: {
   id: Exclude<ColorMode, "custom">;
@@ -295,14 +294,10 @@ export function RemoveBg() {
   }
 
   return (
-    <div className="studio">
+    <div className={`studio ${empty ? "studio--idle" : ""}`}>
       <Seo
         page={homeSeo}
-        jsonLd={[
-          webAppJsonLd(),
-          softwareAppJsonLd(homeSeo),
-          removeBgFaqJsonLd(),
-        ]}
+        jsonLd={[webAppJsonLd(), softwareAppJsonLd(homeSeo)]}
       />
 
       <header className="studio__header">
@@ -325,63 +320,6 @@ export function RemoveBg() {
                 }}
               />
             </label>
-
-            {history.entries.length > 0 && studioMode === "view" && (
-              <div className="menu" data-studio-menu>
-                <button
-                  type="button"
-                  className={`btn btn--ghost btn--small ${openMenu === "recent" ? "is-active-tool" : ""}`}
-                  aria-expanded={openMenu === "recent"}
-                  disabled={busy}
-                  onClick={() => toggleMenu("recent")}
-                >
-                  Recent
-                  <span className="menu__count">{history.entries.length}</span>
-                </button>
-                {openMenu === "recent" && (
-                  <div
-                    className="menu-panel menu-panel--recent"
-                    role="dialog"
-                    aria-label="Recent cutouts"
-                  >
-                    <ul className="recent-grid">
-                      {history.entries.map((entry) => {
-                        const selected =
-                          !pendingSourceUrl && entry.id === history.activeId;
-                        return (
-                          <li key={entry.id} className="recent-grid__item">
-                            <button
-                              type="button"
-                              className={`recent-card ${selected ? "is-active" : ""}`}
-                              disabled={busy}
-                              onClick={() => onSelect(entry.id)}
-                            >
-                              <img
-                                src={entry.cutoutUrl}
-                                alt=""
-                                className="recent-card__thumb"
-                              />
-                            </button>
-                            <button
-                              type="button"
-                              className="recent-card__remove"
-                              aria-label="Remove from recent"
-                              disabled={busy}
-                              onClick={() => void history.remove(entry.id)}
-                            >
-                              ×
-                            </button>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                    <p className="menu-panel__meta">
-                      {history.entries.length}/{RMBG_HISTORY_MAX} on this device
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
 
             {ready && downloadUrl && studioMode === "view" && (
               <button
@@ -416,136 +354,180 @@ export function RemoveBg() {
       )}
 
       {!empty && (
-        <div className="studio__work">
-          {ready && studioMode === "view" && (
-            <div className="studio__chrome">
-              <div className="seg" role="group" aria-label="View">
-                <button
-                  type="button"
-                  className={`seg__btn ${viewMode === "result" ? "is-active" : ""}`}
-                  onClick={() => {
-                    setViewMode("result");
-                    setOpenMenu("none");
-                  }}
-                >
-                  Result
-                </button>
-                <button
-                  type="button"
-                  className={`seg__btn ${viewMode === "compare" ? "is-active" : ""}`}
-                  onClick={() => {
-                    setViewMode("compare");
-                    setOpenMenu("none");
-                  }}
-                >
-                  Compare
-                </button>
+        <div
+          className={`studio__shell ${history.entries.length > 0 ? "has-gallery" : ""}`}
+        >
+          {history.entries.length > 0 && (
+            <aside className="studio__gallery" aria-label="Recent cutouts">
+              <div className="studio__gallery-head">
+                <span>Recent</span>
+                <span className="studio__gallery-count">
+                  {history.entries.length}/{RMBG_HISTORY_MAX}
+                </span>
               </div>
+              <ul className="gallery-list">
+                {history.entries.map((entry) => {
+                  const selected =
+                    !pendingSourceUrl && entry.id === history.activeId;
+                  return (
+                    <li key={entry.id} className="gallery-list__item">
+                      <button
+                        type="button"
+                        className={`gallery-thumb ${selected ? "is-active" : ""}`}
+                        disabled={busy || studioMode === "crop"}
+                        onClick={() => onSelect(entry.id)}
+                      >
+                        <img src={entry.cutoutUrl} alt="" />
+                      </button>
+                      <button
+                        type="button"
+                        className="gallery-thumb__remove"
+                        aria-label="Remove from recent"
+                        disabled={busy || studioMode === "crop"}
+                        onClick={() => void history.remove(entry.id)}
+                      >
+                        ×
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </aside>
+          )}
 
-              <div className="studio__tools">
-                <div className="menu" data-studio-menu>
+          <div className="studio__work">
+            {ready && studioMode === "view" && (
+              <div className="studio__chrome">
+                <div className="seg" role="group" aria-label="View">
                   <button
                     type="button"
-                    className={`btn btn--ghost btn--small ${openMenu === "color" || colorActive ? "is-active-tool" : ""}`}
-                    aria-expanded={openMenu === "color"}
-                    onClick={() => toggleMenu("color")}
+                    className={`seg__btn ${viewMode === "result" ? "is-active" : ""}`}
+                    onClick={() => {
+                      setViewMode("result");
+                      setOpenMenu("none");
+                    }}
                   >
-                    Color{colorActive ? " · on" : ""}
+                    Result
                   </button>
-                  {openMenu === "color" && (
-                    <div
-                      className="menu-panel menu-panel--color"
-                      role="dialog"
-                      aria-label="Color overlay"
-                    >
-                      <div className="chip-row">
-                        {COLOR_PRESETS.map((preset) => (
-                          <button
-                            key={preset.id}
-                            type="button"
-                            className={`chip ${colorMode === preset.id ? "is-active" : ""}`}
-                            onClick={() =>
-                              history.setActiveColors(preset.id, customColor)
-                            }
-                          >
-                            {preset.label}
-                          </button>
-                        ))}
-                        <button
-                          type="button"
-                          className={`chip ${colorMode === "custom" ? "is-active" : ""}`}
-                          onClick={() =>
-                            history.setActiveColors("custom", customColor)
-                          }
-                        >
-                          Custom
-                        </button>
-                      </div>
-                      {colorMode === "custom" && (
-                        <label className="color-picker-row">
-                          <input
-                            type="color"
-                            value={customColor}
-                            onChange={(e) =>
-                              history.setActiveColors("custom", e.target.value)
-                            }
-                          />
-                          <span>{customColor}</span>
-                        </label>
-                      )}
-                    </div>
-                  )}
+                  <button
+                    type="button"
+                    className={`seg__btn ${viewMode === "compare" ? "is-active" : ""}`}
+                    onClick={() => {
+                      setViewMode("compare");
+                      setOpenMenu("none");
+                    }}
+                  >
+                    Compare
+                  </button>
                 </div>
 
-                <button
-                  type="button"
-                  className="btn btn--ghost btn--small"
-                  disabled={!downloadUrl}
-                  onClick={() => {
-                    setOpenMenu("none");
-                    setStudioMode("crop");
-                  }}
-                >
-                  Crop
-                </button>
+                <div className="studio__tools">
+                  <div className="menu" data-studio-menu>
+                    <button
+                      type="button"
+                      className={`btn btn--ghost btn--small ${openMenu === "color" || colorActive ? "is-active-tool" : ""}`}
+                      aria-expanded={openMenu === "color"}
+                      onClick={() => toggleMenu("color")}
+                    >
+                      Color{colorActive ? " · on" : ""}
+                    </button>
+                    {openMenu === "color" && (
+                      <div
+                        className="menu-panel menu-panel--color"
+                        role="dialog"
+                        aria-label="Color overlay"
+                      >
+                        <div className="chip-row">
+                          {COLOR_PRESETS.map((preset) => (
+                            <button
+                              key={preset.id}
+                              type="button"
+                              className={`chip ${colorMode === preset.id ? "is-active" : ""}`}
+                              onClick={() =>
+                                history.setActiveColors(preset.id, customColor)
+                              }
+                            >
+                              {preset.label}
+                            </button>
+                          ))}
+                          <button
+                            type="button"
+                            className={`chip ${colorMode === "custom" ? "is-active" : ""}`}
+                            onClick={() =>
+                              history.setActiveColors("custom", customColor)
+                            }
+                          >
+                            Custom
+                          </button>
+                        </div>
+                        {colorMode === "custom" && (
+                          <label className="color-picker-row">
+                            <input
+                              type="color"
+                              value={customColor}
+                              onChange={(e) =>
+                                history.setActiveColors(
+                                  "custom",
+                                  e.target.value,
+                                )
+                              }
+                            />
+                            <span>{customColor}</span>
+                          </label>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    className="btn btn--ghost btn--small"
+                    disabled={!downloadUrl}
+                    onClick={() => {
+                      setOpenMenu("none");
+                      setStudioMode("crop");
+                    }}
+                  >
+                    Crop
+                  </button>
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {busy && (
-            <p className="studio__status" role="status">
-              {progressLabel(progress)}
-            </p>
-          )}
-          {error && (
-            <p className="studio__status studio__status--error" role="alert">
-              {error}
-            </p>
-          )}
+            {busy && (
+              <p className="studio__status" role="status">
+                {progressLabel(progress)}
+              </p>
+            )}
+            {error && (
+              <p className="studio__status studio__status--error" role="alert">
+                {error}
+              </p>
+            )}
 
-          {studioMode === "crop" && downloadUrl ? (
-            <InlineCropper
-              imageUrl={downloadUrl}
-              onCancel={() => setStudioMode("view")}
-              onApply={(cropped) => void applyCrop(cropped)}
-            />
-          ) : (
-            <div
-              className={`studio__stage ${stageDragging ? "is-drop-target" : ""}`}
-              onDragOver={(e) => {
-                if (busy || studioMode === "crop") return;
-                e.preventDefault();
-                setStageDragging(true);
-              }}
-              onDragLeave={() => setStageDragging(false)}
-              onDrop={(e) => {
-                if (busy || studioMode === "crop") return;
-                e.preventDefault();
-                setStageDragging(false);
-                const file = e.dataTransfer.files?.[0];
-                if (file) void ingestFile(file);
-              }}
-            >
+            {studioMode === "crop" && downloadUrl ? (
+              <InlineCropper
+                imageUrl={downloadUrl}
+                onCancel={() => setStudioMode("view")}
+                onApply={(cropped) => void applyCrop(cropped)}
+              />
+            ) : (
+              <div
+                className={`studio__stage ${stageDragging ? "is-drop-target" : ""}`}
+                onDragOver={(e) => {
+                  if (busy || studioMode === "crop") return;
+                  e.preventDefault();
+                  setStageDragging(true);
+                }}
+                onDragLeave={() => setStageDragging(false)}
+                onDrop={(e) => {
+                  if (busy || studioMode === "crop") return;
+                  e.preventDefault();
+                  setStageDragging(false);
+                  const file = e.dataTransfer.files?.[0];
+                  if (file) void ingestFile(file);
+                }}
+              >
               {busy && !displayUrl && (
                 <div className="stage-empty">
                   <p>{progressLabel(progress)}</p>
@@ -625,11 +607,12 @@ export function RemoveBg() {
                 </div>
               )}
 
-              {stageDragging && (
-                <div className="studio__drop-hint">Drop to replace</div>
-              )}
-            </div>
-          )}
+                {stageDragging && (
+                  <div className="studio__drop-hint">Drop to replace</div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       )}
 

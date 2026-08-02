@@ -94,14 +94,53 @@ code {
 /* —— Studio (bg removal first) —— */
 .studio {
   /* One shell width idle + active so the title/footer never reflow. */
+  --studio-rail: 112px;
+  --studio-rail-gap: 0.9rem;
+  --studio-stack-gap: 1.85rem;
   width: min(100%, 1080px);
   margin: 0 auto;
-  padding: 1.25rem clamp(1rem, 3vw, 2rem) 2rem;
+  padding: 1.35rem clamp(1rem, 3vw, 2rem) 2rem;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--studio-stack-gap);
   box-sizing: border-box;
+}
+
+/**
+ * Active studio: Recent bolts on beside the work column.
+ * A matching empty third column balances the rail so title / work /
+ * footer stay centered on the page (gallery is a side attachment).
+ */
+.studio--rail {
+  width: min(100%, 1200px);
+  display: grid;
+  grid-template-columns: var(--studio-rail) minmax(0, 1fr) var(--studio-rail);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  column-gap: var(--studio-rail-gap);
+  row-gap: var(--studio-stack-gap);
+  align-items: start;
+}
+
+.studio--rail .studio__header {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.studio--rail .studio__gallery {
+  grid-column: 1;
+  grid-row: 2;
+  align-self: start;
+}
+
+.studio--rail .studio__work {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.studio--rail .studio__footer {
+  grid-column: 2;
+  grid-row: 3;
 }
 
 .studio__header {
@@ -306,18 +345,6 @@ code {
   letter-spacing: 0.02em;
 }
 
-.studio__shell {
-  display: grid;
-  gap: 1rem;
-  flex: 1;
-  min-width: 0;
-  align-items: start;
-}
-
-.studio__shell.has-gallery {
-  grid-template-columns: 112px minmax(0, 1fr);
-}
-
 .studio__gallery {
   display: grid;
   gap: 0.55rem;
@@ -325,6 +352,7 @@ code {
   position: sticky;
   top: 1rem;
   max-height: calc(100vh - 2rem);
+  width: var(--studio-rail);
   min-width: 0;
 }
 
@@ -883,13 +911,36 @@ label.btn {
 }
 
 @media (max-width: 800px) {
-  .studio__shell.has-gallery {
+  /* Narrow: stack the rail above the work; title/footer full width. */
+  .studio--rail {
     grid-template-columns: 1fr;
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
   }
 
-  .studio__gallery {
+  .studio--rail .studio__header,
+  .studio--rail .studio__gallery,
+  .studio--rail .studio__work,
+  .studio--rail .studio__footer {
+    grid-column: 1;
+  }
+
+  .studio--rail .studio__header {
+    grid-row: 1;
+  }
+
+  .studio--rail .studio__gallery {
+    grid-row: 2;
+    width: auto;
     position: static;
     max-height: none;
+  }
+
+  .studio--rail .studio__work {
+    grid-row: 3;
+  }
+
+  .studio--rail .studio__footer {
+    grid-row: 4;
   }
 
   .studio__gallery-head {

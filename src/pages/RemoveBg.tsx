@@ -458,7 +458,7 @@ export function RemoveBg() {
   }
 
   return (
-    <div className="studio">
+    <div className={`studio ${empty ? "" : "studio--rail"}`.trim()}>
       <Seo
         page={homeSeo}
         jsonLd={[webAppJsonLd(), softwareAppJsonLd(homeSeo)]}
@@ -488,79 +488,80 @@ export function RemoveBg() {
       )}
 
       {!empty && (
-        <div className="studio__shell has-gallery">
-          <aside className="studio__gallery" aria-label="Recent cutouts">
-            <div className="studio__gallery-head">
-              <div className="studio__gallery-label">
-                <span>Recent</span>
-                <span className="studio__gallery-count">
-                  {history.entries.length}/{RMBG_HISTORY_MAX}
-                </span>
-              </div>
-              {studioMode === "new" ? (
-                <button
-                  type="button"
-                  className="btn btn--ghost btn--small btn--block"
-                  disabled={busy}
-                  onClick={() => {
-                    setError(null);
-                    setStudioMode("view");
-                  }}
-                >
-                  Cancel
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  className="btn btn--ghost btn--small btn--block"
-                  disabled={busy || studioMode === "crop"}
-                  onClick={() => {
-                    setOpenMenu("none");
-                    setError(null);
-                    setStudioMode("new");
-                  }}
-                >
-                  New
-                </button>
-              )}
+        <aside className="studio__gallery" aria-label="Recent cutouts">
+          <div className="studio__gallery-head">
+            <div className="studio__gallery-label">
+              <span>Recent</span>
+              <span className="studio__gallery-count">
+                {history.entries.length}/{RMBG_HISTORY_MAX}
+              </span>
             </div>
-            <ul className="gallery-list">
-              {pendingSourceUrl && (
-                <li className="gallery-list__item">
-                  <div className="gallery-thumb is-active is-pending">
-                    <img src={pendingSourceUrl} alt="" />
-                  </div>
+            {studioMode === "new" ? (
+              <button
+                type="button"
+                className="btn btn--ghost btn--small btn--block"
+                disabled={busy}
+                onClick={() => {
+                  setError(null);
+                  setStudioMode("view");
+                }}
+              >
+                Cancel
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="btn btn--ghost btn--small btn--block"
+                disabled={busy || studioMode === "crop"}
+                onClick={() => {
+                  setOpenMenu("none");
+                  setError(null);
+                  setStudioMode("new");
+                }}
+              >
+                New
+              </button>
+            )}
+          </div>
+          <ul className="gallery-list">
+            {pendingSourceUrl && (
+              <li className="gallery-list__item">
+                <div className="gallery-thumb is-active is-pending">
+                  <img src={pendingSourceUrl} alt="" />
+                </div>
+              </li>
+            )}
+            {history.entries.map((entry) => {
+              const selected =
+                !pendingSourceUrl && entry.id === history.activeId;
+              return (
+                <li key={entry.id} className="gallery-list__item">
+                  <button
+                    type="button"
+                    className={`gallery-thumb ${selected ? "is-active" : ""}`}
+                    disabled={busy || studioMode === "crop"}
+                    onClick={() => onSelect(entry.id)}
+                  >
+                    <img src={entry.cutoutUrl} alt="" />
+                  </button>
+                  <button
+                    type="button"
+                    className="gallery-thumb__remove"
+                    aria-label="Remove from recent"
+                    disabled={busy || studioMode === "crop"}
+                    onClick={() => void history.remove(entry.id)}
+                  >
+                    ×
+                  </button>
                 </li>
-              )}
-              {history.entries.map((entry) => {
-                const selected =
-                  !pendingSourceUrl && entry.id === history.activeId;
-                return (
-                  <li key={entry.id} className="gallery-list__item">
-                    <button
-                      type="button"
-                      className={`gallery-thumb ${selected ? "is-active" : ""}`}
-                      disabled={busy || studioMode === "crop"}
-                      onClick={() => onSelect(entry.id)}
-                    >
-                      <img src={entry.cutoutUrl} alt="" />
-                    </button>
-                    <button
-                      type="button"
-                      className="gallery-thumb__remove"
-                      aria-label="Remove from recent"
-                      disabled={busy || studioMode === "crop"}
-                      onClick={() => void history.remove(entry.id)}
-                    >
-                      ×
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          </aside>
+              );
+            })}
+          </ul>
+        </aside>
+      )}
 
-          <div className="studio__work">
+      {!empty && (
+        <div className="studio__work">
             {studioMode === "crop" && cutoutUrl ? (
               <InlineCropper
                 imageUrl={cutoutUrl}
@@ -1000,7 +1001,6 @@ export function RemoveBg() {
               </>
             )}
           </div>
-        </div>
       )}
 
       <SiteFooter />

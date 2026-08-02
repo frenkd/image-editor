@@ -27,7 +27,7 @@ const STEPS = [
 
 export function HowItWorks() {
   return (
-    <DocShell page={howItWorksSeo} title="How it works" wide>
+    <DocShell page={howItWorksSeo} title="How it works">
       <p className="doc__lede">
         A free background remover that keeps your image on this device. One open
         model, local cutout, no account.

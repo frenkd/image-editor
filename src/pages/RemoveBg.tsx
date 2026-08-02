@@ -357,7 +357,7 @@ export function RemoveBg() {
   }
 
   return (
-    <div className={`studio ${empty ? "studio--idle" : ""}`}>
+    <div className="studio">
       <Seo
         page={homeSeo}
         jsonLd={[webAppJsonLd(), softwareAppJsonLd(homeSeo)]}

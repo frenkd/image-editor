@@ -8,19 +8,12 @@ type DocShellProps = {
   page: PageSeo;
   title: string;
   jsonLd?: Record<string, unknown>[];
-  wide?: boolean;
   children: ReactNode;
 };
 
-export function DocShell({
-  page,
-  title,
-  jsonLd,
-  wide = false,
-  children,
-}: DocShellProps) {
+export function DocShell({ page, title, jsonLd, children }: DocShellProps) {
   return (
-    <div className={`studio doc ${wide ? "doc--wide" : ""}`}>
+    <div className="studio doc">
       <Seo page={page} jsonLd={jsonLd} />
 
       <header className="studio__header">

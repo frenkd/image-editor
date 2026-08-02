@@ -93,6 +93,7 @@ code {
 
 /* —— Studio (bg removal first) —— */
 .studio {
+  /* One shell width idle + active so the title/footer never reflow. */
   width: min(100%, 1080px);
   margin: 0 auto;
   padding: 1.25rem clamp(1rem, 3vw, 2rem) 2rem;
@@ -101,11 +102,6 @@ code {
   flex-direction: column;
   gap: 1rem;
   box-sizing: border-box;
-}
-
-/* Idle home: one centered column so header / dropzone / footer share edges */
-.studio--idle {
-  width: min(100%, 720px);
 }
 
 .studio__header {
@@ -123,6 +119,7 @@ code {
   letter-spacing: -0.035em;
   line-height: 1;
   font-weight: 800;
+  text-wrap: balance;
 }
 
 .studio__hero {
@@ -131,7 +128,8 @@ code {
   place-content: center;
   gap: 0.85rem;
   min-height: min(62vh, 560px);
-  width: 100%;
+  width: min(100%, 720px);
+  margin: 0 auto;
 }
 
 .studio__privacy {
@@ -165,12 +163,9 @@ code {
   border-color: var(--ink);
 }
 
+/* All secondary pages share one column (overrides .studio width). */
 .doc {
   width: min(100%, 40rem);
-}
-
-.doc--wide {
-  width: min(100%, 820px);
 }
 
 .doc__body {
@@ -184,7 +179,6 @@ code {
   color: var(--ink-soft);
   font-size: 1.05rem;
   line-height: 1.5;
-  max-width: 36rem;
 }
 
 .doc__note {
@@ -204,7 +198,7 @@ code {
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: 1fr 1fr;
   gap: 0.75rem;
 }
 
@@ -274,12 +268,6 @@ code {
 
 .explain__cta {
   margin: 0.25rem 0 0;
-}
-
-@media (max-width: 700px) {
-  .flow-steps {
-    grid-template-columns: 1fr 1fr;
-  }
 }
 
 @media (max-width: 420px) {

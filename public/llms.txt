@@ -1,27 +1,29 @@
 # cutbg (Remove Background)
-> Local-first open-source background remover. Runs RMBG-1.4 in the browser or via a Node CLI. No photo upload to the site.
+> Local-first open-source background remover for humans and AI agents. Runs RMBG-1.4 in the browser. No photo upload to the site. No clone required.
 
-Images stay on the device. The model downloads from Hugging Face once. Optional color fill and crop in the web UI.
+Images stay on the device. The model downloads from Hugging Face once.
 
-## Agent how-to
-- [Remove-background skill](https://cutbg.vercel.app/agent-skills/remove-background/SKILL.md): CLI and `?src=` deep-link instructions for agents
-- [agents.txt](https://cutbg.vercel.app/agents.txt): capability declaration
-- [agents.json](https://cutbg.vercel.app/agents.json): structured capability catalog
+## Agent how-to (HTTP + web)
 
-## CLI (preferred for agents)
-Clone https://github.com/frenkd/image-editor then:
+1. GET https://cutbg.vercel.app/api/capabilities?via=agent
+2. Read https://cutbg.vercel.app/llms.txt and the skill it links
+3. Open a deep link (CORS must allow the image URL). Always include via=agent for analytics:
 
-```bash
-npm install
-npm run remove-bg -- <input-or-url> [output.png] [options]
+```
+https://cutbg.vercel.app/?src=<encoded-image-url>&via=agent&crop=auto&advanced=1
+https://cutbg.vercel.app/?src=<encoded-image-url>&via=agent&color=%23e85d04&crop=auto
 ```
 
-Useful options: `--color #rrggbb`, `--crop auto`, `--advanced`, `--fill-holes`, `--fill-holes=all`, `--solid`, `--mode ink`, `--ink-max 96`.
-See the remove-background skill for the full flag list and logo vs photo tips.
+Human guide: https://cutbg.vercel.app/for-agents
+Skill: https://cutbg.vercel.app/agent-skills/remove-background/SKILL.md
+Catalog: https://cutbg.vercel.app/agents.json
+
+Query params: `src` / `url` / `image`, `via=agent`, `color` / `fill`, `crop=auto` or `x,y,w,h`, `advanced=1`.
 
 ## Web
 - App: https://cutbg.vercel.app/
-- Deep link: https://cutbg.vercel.app/?src=<image-url>&color=%2300a894&crop=auto&advanced=1
+- For agents: https://cutbg.vercel.app/for-agents
+- Capabilities API: https://cutbg.vercel.app/api/capabilities?via=agent
 
 ## Docs
 - [How it works](https://cutbg.vercel.app/how-it-works)
@@ -29,7 +31,3 @@ See the remove-background skill for the full flag list and logo vs photo tips.
 - [Use cases](https://cutbg.vercel.app/use-cases)
 - [Privacy](https://cutbg.vercel.app/privacy)
 - [Source](https://github.com/frenkd/image-editor)
-
-## Optional
-- [Terms](https://cutbg.vercel.app/terms)
-- [RMBG-1.4 model](https://huggingface.co/briaai/RMBG-1.4)

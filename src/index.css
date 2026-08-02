@@ -207,8 +207,63 @@ code {
   width: min(100%, 40rem);
 }
 
-.doc:has(.use-cases) {
+.doc:has(.use-cases),
+.doc:has(.agent-guide) {
   width: min(100%, 48rem);
+}
+
+.agent-guide {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.agent-guide h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+.agent-guide p {
+  margin: 0;
+  color: var(--ink-soft);
+  line-height: 1.5;
+}
+
+.agent-guide__list {
+  margin: 0;
+  padding-left: 1.2rem;
+  color: var(--ink-soft);
+  line-height: 1.55;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.agent-guide__list a {
+  color: var(--ink);
+  border-bottom: 1px solid var(--line-strong);
+}
+
+.agent-guide__list a:hover {
+  border-color: var(--ink);
+}
+
+.agent-guide__code {
+  margin: 0;
+  padding: 0.85rem 1rem;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--paper) 88%, var(--ink) 12%);
+  font-size: 0.82rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.agent-guide__code code {
+  font-family: var(--font-mono);
+  font-size: inherit;
 }
 
 .doc__body {

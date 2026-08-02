@@ -66,7 +66,8 @@ export function HowItWorks() {
         </p>
         <p className="doc__note">
           More detail in the <Link to="/faq">FAQ</Link>. Examples in{" "}
-          <Link to="/use-cases">common use cases</Link>.
+          <Link to="/use-cases">common use cases</Link>. AI tools:{" "}
+          <Link to="/for-agents">for agents</Link>.
         </p>
       </div>
 

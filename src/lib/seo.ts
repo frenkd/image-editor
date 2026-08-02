@@ -96,6 +96,24 @@ export const useCasesSeo: PageSeo = {
   ],
 };
 
+export const forAgentsSeo: PageSeo = {
+  path: "/for-agents",
+  title: "How Claude, ChatGPT & Codex Remove Image Backgrounds",
+  description:
+    "Make Claude, ChatGPT, or Codex remove a background from an image with cutbg. Agents read /llms.txt and open /?src=<image-url>. No clone required. Local AI in the browser.",
+  keywords: [
+    "how to make claude remove background from image",
+    "claude remove background",
+    "chatgpt remove background",
+    "codex remove background",
+    "ai agent background remover",
+    "llm remove image background",
+    "cursor agent remove background",
+    "agents.txt background removal",
+    "llms.txt image cutout",
+  ],
+};
+
 export function absoluteUrl(path: string): string {
   if (path.startsWith("http")) return path;
   return `${SITE_URL}${path.startsWith("/") ? path : `/${path}`}`;

@@ -1,35 +1,38 @@
 {
-  "version": "1.0",
+  "version": "1.1",
   "standard": "https://agents-txt.com",
   "site": "https://cutbg.vercel.app",
+  "guide": "https://cutbg.vercel.app/for-agents",
+  "capabilities_url": "https://cutbg.vercel.app/api/capabilities?via=agent",
   "skills": [
     {
       "url": "https://cutbg.vercel.app/agent-skills/remove-background/SKILL.md",
       "name": "remove-background",
-      "description": "Remove image backgrounds locally with RMBG-1.4 via npm run remove-bg or /?src= image deep link."
+      "description": "Remove image backgrounds via https://cutbg.vercel.app/?src=<image-url>&via=agent (optional color, crop, advanced). Discover with GET /api/capabilities. No clone required."
     }
   ],
   "capabilities": {
     "background_removal": {
-      "cli": "npm run remove-bg -- <input> [output.png] [options]",
-      "options": [
-        "--color #rrggbb",
-        "--crop auto",
-        "--crop x,y,w,h",
-        "--pad 0.03",
-        "--remove-speckles",
-        "--fill-holes",
-        "--fill-holes=all",
-        "--solid",
-        "--advanced",
-        "--mode ink",
-        "--ink-max 96"
+      "preferred": "web_deep_link",
+      "web_deep_link": "https://cutbg.vercel.app/?src=<image-url>&via=agent&crop=auto&advanced=1",
+      "web_query_params": [
+        "src",
+        "url",
+        "image",
+        "via",
+        "agent",
+        "color",
+        "fill",
+        "crop",
+        "advanced",
+        "speckles",
+        "fill-holes"
       ],
-      "repository": "https://github.com/frenkd/image-editor",
-      "web_deep_link": "https://cutbg.vercel.app/?src=<image-url>&color=%2300a894&crop=auto&advanced=1",
-      "web_query_params": ["src", "url", "image", "color", "fill", "crop", "advanced", "speckles", "fill-holes"],
+      "analytics_tag": "via=agent",
+      "guide": "https://cutbg.vercel.app/for-agents",
       "model": "briaai/RMBG-1.4",
-      "uploads_images_to_site": false
+      "uploads_images_to_site": false,
+      "clone_required": false
     }
   }
 }

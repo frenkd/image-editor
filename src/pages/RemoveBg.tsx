@@ -42,6 +42,11 @@ import {
   recordProcessSample,
 } from "../lib/rmbgTiming";
 import {
+  resolveCutoutClient,
+  trackCutoutStart,
+  type CutoutClient,
+} from "../lib/analytics";
+import {
   homeSeo,
   softwareAppJsonLd,
   webAppJsonLd,
@@ -59,6 +64,7 @@ type AgentDeepLink = {
   color: string | null;
   crop: "auto" | Rect | null;
   cleanup: MaskCleanupOptions | null;
+  client: CutoutClient;
 };
 
 function parseTruthy(v: string | null): boolean {
@@ -111,7 +117,12 @@ function readAgentDeepLink(params: URLSearchParams): AgentDeepLink {
     speckles || fillHoles
       ? { removeSpeckles: speckles, fillHoles }
       : null;
-  return { color, crop, cleanup };
+  return {
+    color,
+    crop,
+    cleanup,
+    client: resolveCutoutClient(params),
+  };
 }
 
 function readCleanupPrefs(): MaskCleanupOptions {
@@ -151,6 +162,7 @@ export function RemoveBg() {
   const [searchParams, setSearchParams] = useSearchParams();
   const agentSrcConsumed = useRef(false);
   const agentDeepLinkRef = useRef<AgentDeepLink | null>(null);
+  const cutoutClientRef = useRef<CutoutClient>("human");
   const [pendingSourceUrl, setPendingSourceUrl] = useState<string | null>(null);
   const pendingObjectUrlRef = useRef<string | null>(null);
   const [status, setStatus] = useState<Status>("idle");
@@ -358,6 +370,16 @@ export function RemoveBg() {
     if (cachedModelRef.current) {
       processStartedAtRef.current = performance.now();
     }
+    const client = cutoutClientRef.current;
+    trackCutoutStart(client, {
+      hasColor: Boolean(agentDeepLinkRef.current?.color),
+      hasCrop: Boolean(agentDeepLinkRef.current?.crop),
+      advanced: Boolean(
+        agentDeepLinkRef.current?.cleanup?.removeSpeckles ||
+          agentDeepLinkRef.current?.cleanup?.fillHoles,
+      ),
+    });
+    cutoutClientRef.current = "human";
     setStatus("processing");
     setError(null);
     setProgress(
@@ -466,6 +488,8 @@ export function RemoveBg() {
       return;
     }
     clearPendingSource();
+    agentDeepLinkRef.current = null;
+    cutoutClientRef.current = "human";
     const url = URL.createObjectURL(file);
     pendingObjectUrlRef.current = url;
     setPendingSourceUrl(url);
@@ -491,6 +515,7 @@ export function RemoveBg() {
     agentSrcConsumed.current = true;
     const agent = readAgentDeepLink(searchParams);
     agentDeepLinkRef.current = agent;
+    cutoutClientRef.current = agent.client;
     if (agent.cleanup) {
       setCleanup(agent.cleanup);
       cleanupRef.current = agent.cleanup;
@@ -509,6 +534,10 @@ export function RemoveBg() {
       "remove-speckles",
       "fill-holes",
       "fillHoles",
+      "via",
+      "client",
+      "from",
+      "agent",
     ]) {
       next.delete(key);
     }
@@ -579,6 +608,8 @@ export function RemoveBg() {
 
   function rerunFromSource() {
     if (!sourceUrl || busy) return;
+    agentDeepLinkRef.current = null;
+    cutoutClientRef.current = "human";
     run(sourceUrl, history.activeId ? "replace" : "create");
   }
 

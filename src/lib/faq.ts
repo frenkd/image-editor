@@ -31,6 +31,10 @@ export const FAQ_ITEMS = [
   },
   {
     q: "Can AI agents use this?",
-    a: "Yes. Read /llms.txt and /agents.txt. Preferred path: clone the repo and run npm run remove-bg -- <file-or-url> [out.png] with optional --color, --crop auto, --advanced, --fill-holes, --mode ink, and --solid. The web app accepts /?src=<image-url>&color=&crop=auto&advanced=1 when CORS allows the image. Full flags are in the remove-background skill.",
+    a: "Yes. See /for-agents. Agents GET /api/capabilities?via=agent (or /llms.txt), then open /?src=<image-url>&via=agent&crop=auto. No clone required. via=agent tags the session in Vercel Analytics separately from human uploads.",
+  },
+  {
+    q: "Can analytics tell humans and agents apart?",
+    a: "Page views alone are a weak signal. We emit custom Vercel Analytics events: cutout_start with client=human or client=agent (when via=agent is set), plus agent_discover on /api/capabilities. Filter those in the Analytics Events panel. Images are never sent to analytics.",
   },
 ] as const;

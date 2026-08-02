@@ -18,7 +18,8 @@ export function Faq() {
       <p className="doc__note">
         Want the short version? See{" "}
         <Link to="/how-it-works">how it works</Link>. For before and after
-        examples, see <Link to="/use-cases">common use cases</Link>.
+        examples, see <Link to="/use-cases">common use cases</Link>. For Claude,
+        ChatGPT, or Codex, see <Link to="/for-agents">for agents</Link>.
       </p>
     </DocShell>
   );

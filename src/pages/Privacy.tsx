@@ -35,10 +35,13 @@ export function Privacy() {
           >
             Vercel Analytics
           </a>
-          . It collects anonymous usage metrics such as page views and basic
-          visit information (for example which pages are opened). It does not
-          receive your images or cutouts. We use this to understand traffic, not
-          to identify you from your photos.
+          . It collects anonymous usage metrics such as page views and custom
+          events (for example <code>cutout_start</code> with a{" "}
+          <code>client</code> tag of human or agent when a deep link includes{" "}
+          <code>via=agent</code>, and <code>agent_discover</code> when{" "}
+          <code>/api/capabilities</code> is requested). It does not receive your
+          images or cutouts. We use this to understand human vs agent traffic,
+          not to identify you from your photos.
         </p>
 
         <h2>Contact</h2>

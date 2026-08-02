@@ -50,7 +50,7 @@ const USE_CASES: UseCase[] = [
     beforeAlt: "Black PEAK logo printed on textured cream paper",
     afterAlt: "PEAK logo cut out and recolored orange on a transparent background",
     afterLabel: "After + color",
-    body: "Start from a paper scan or photo of black ink. Agents: npm run remove-bg -- logo.jpg out.png --mode ink --color #e85d04 --crop auto. In the web UI, remove the background then use Color.",
+    body: "Start from a paper scan or photo of black ink. In the web UI, remove the background then use Color. Agents can open /?src=<logo-url>&color=%23e85d04&crop=auto (see for agents).",
   },
 ];
 
@@ -134,8 +134,9 @@ export function UseCases() {
 
       <p className="doc__note">
         Processing stays in your browser. See{" "}
-        <Link to="/how-it-works">how it works</Link> or the{" "}
-        <Link to="/faq">FAQ</Link>.
+        <Link to="/how-it-works">how it works</Link>, the{" "}
+        <Link to="/faq">FAQ</Link>, or{" "}
+        <Link to="/for-agents">for agents</Link>.
       </p>
 
       <p className="explain__cta">

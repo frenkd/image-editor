@@ -2,6 +2,7 @@ import { Analytics } from "@vercel/analytics/react";
 import { HelmetProvider } from "react-helmet-async";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Faq } from "./pages/Faq";
+import { ForAgents } from "./pages/ForAgents";
 import { HowItWorks } from "./pages/HowItWorks";
 import { Privacy } from "./pages/Privacy";
 import { Terms } from "./pages/Terms";
@@ -17,6 +18,11 @@ export default function App() {
             <Route path="/" element={<RemoveBg />} />
             <Route path="/how-it-works" element={<HowItWorks />} />
             <Route path="/use-cases" element={<UseCases />} />
+            <Route path="/for-agents" element={<ForAgents />} />
+            <Route
+              path="/ai-agents"
+              element={<Navigate to="/for-agents" replace />}
+            />
             <Route path="/faq" element={<Faq />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/terms" element={<Terms />} />

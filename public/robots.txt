@@ -4,5 +4,7 @@ Allow: /agents.txt
 Allow: /agents.json
 Allow: /llms.txt
 Allow: /agent-skills/
+Allow: /api/capabilities
+Allow: /for-agents
 
 Sitemap: https://cutbg.vercel.app/sitemap.xml

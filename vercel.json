@@ -1,7 +1,7 @@
 {
   "rewrites": [
     {
-      "source": "/((?!assets/|og\\.png|favicon\\.svg|robots\\.txt|sitemap\\.xml|agents\\.txt|agents\\.json|llms\\.txt|agent-skills/|use-cases/).*)",
+      "source": "/((?!api/|assets/|og\\.png|favicon\\.svg|robots\\.txt|sitemap\\.xml|agents\\.txt|agents\\.json|llms\\.txt|agent-skills/|use-cases/).*)",
       "destination": "/index.html"
     }
   ],
@@ -11,6 +11,20 @@
       "headers": [
         { "key": "X-Content-Type-Options", "value": "nosniff" },
         { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
+      ]
+    },
+    {
+      "source": "/(llms\\.txt|agents\\.txt|agents\\.json)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Cache-Control", "value": "public, max-age=300" }
+      ]
+    },
+    {
+      "source": "/agent-skills/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Cache-Control", "value": "public, max-age=300" }
       ]
     }
   ]

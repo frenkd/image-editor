@@ -4,7 +4,7 @@ import { FAQ_ITEMS } from "./faq";
 
 export const SITE_URL =
   (import.meta.env.VITE_SITE_URL as string | undefined)?.replace(/\/$/, "") ||
-  "https://image-editor-chi-weld.vercel.app";
+  "https://cutbg.vercel.app";
 
 export const SITE_NAME = "Remove Background";
 

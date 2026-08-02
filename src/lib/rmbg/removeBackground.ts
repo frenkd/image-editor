@@ -3,7 +3,11 @@
  * Adapted from sloai-org: `image-segmentation` → mask → PNG with alpha.
  */
 
-import { ensureRmbgPipeline, type RmbgProgress } from "./rmbgModel";
+import {
+  ensureRmbgPipeline,
+  getRmbgBackend,
+  type RmbgProgress,
+} from "./rmbgModel";
 
 export type BgRemoveProgress = RmbgProgress;
 
@@ -299,11 +303,18 @@ export async function removeImageBackground(
   if (!segmentator) {
     throw new Error("Failed to load background removal model.");
   }
-  onProgress?.({ phase: "process", message: "Removing background…" });
+
+  const backend = getRmbgBackend();
+  const onGpu = backend?.startsWith("webgpu") ?? false;
+  onProgress?.({
+    phase: "process",
+    message: onGpu ? "Removing… (GPU)" : "Removing…",
+  });
 
   const { RawImage } = await import("@huggingface/transformers");
   const image = await loadRawImage(imageSrc, RawImage as RawImageCtor);
 
+  // Full-resolution inference + mask apply: keep large cutouts sharp.
   const outputs = (await segmentator(image, {
     threshold: 0.5,
     mask_threshold: 0.5,

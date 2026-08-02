@@ -48,9 +48,9 @@ function progressLabel(p: BgRemoveProgress | null): string {
   if (p.phase === "download") {
     return typeof p.percent === "number"
       ? `Downloading model ${Math.round(p.percent)}%`
-      : "Downloading model…";
+      : p.message || "Downloading model…";
   }
-  return "Removing…";
+  return p.message || "Removing…";
 }
 
 export function RemoveBg() {

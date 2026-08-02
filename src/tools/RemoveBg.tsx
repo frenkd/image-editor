@@ -1,11 +1,17 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { DropZone } from "../components/DropZone";
+import { Seo } from "../components/Seo";
 import { ToolShell } from "../components/ToolShell";
 import { usePasteImage } from "../hooks/usePasteImage";
 import { useRmbgHistory } from "../hooks/useRmbgHistory";
 import { applyColorOverlay, downloadDataUrl, validateImageFile } from "../lib/image";
 import { RMBG_HISTORY_MAX, type ColorMode } from "../lib/rmbgHistory";
 import type { BgRemoveProgress } from "../lib/rmbg/removeBackground";
+import {
+  removeBgFaqJsonLd,
+  removeBgSeo,
+  softwareAppJsonLd,
+} from "../lib/seo";
 
 type Status = "idle" | "processing" | "ready" | "error";
 
@@ -175,8 +181,8 @@ export function RemoveBg() {
 
   return (
     <ToolShell
-      title="Remove background"
-      subtitle="Cut out a subject locally, then optionally recolor the cutout. History stays on this device across refresh."
+      title="Remove image background"
+      subtitle="Free local AI background remover. Cut out photos, logos, and people in your browser, then recolor the cutout. History stays on this device across refresh."
       actions={
         <button
           type="button"
@@ -190,6 +196,10 @@ export function RemoveBg() {
         </button>
       }
     >
+      <Seo
+        page={removeBgSeo}
+        jsonLd={[softwareAppJsonLd(removeBgSeo), removeBgFaqJsonLd()]}
+      />
       <div className="workspace">
         <aside className="workspace__side">
           <DropZone
@@ -369,6 +379,41 @@ export function RemoveBg() {
           )}
         </div>
       </div>
+
+      <section className="seo-panel" aria-labelledby="rmbg-faq-heading">
+        <h2 id="rmbg-faq-heading">Free background remover FAQ</h2>
+        <dl className="faq-list">
+          <div>
+            <dt>Is this background remover free?</dt>
+            <dd>
+              Yes. Remove image background for free with this open-source tool.
+              No account and no paid tier for the core cutout flow.
+            </dd>
+          </div>
+          <div>
+            <dt>Do my images get uploaded?</dt>
+            <dd>
+              No. The AI model runs locally in your browser. Your photos stay on
+              your device; recent cutouts are saved in IndexedDB for history.
+            </dd>
+          </div>
+          <div>
+            <dt>How do I remove a logo or photo background?</dt>
+            <dd>
+              Drop or paste an image (Ctrl/Cmd+V works for screenshots and image
+              links), wait for the cutout, optionally recolor it black or white,
+              then download a transparent PNG.
+            </dd>
+          </div>
+          <div>
+            <dt>What model removes the background?</dt>
+            <dd>
+              <code>briaai/RMBG-1.4</code> via Transformers.js. The first run
+              downloads the model from Hugging Face; afterward it is cached.
+            </dd>
+          </div>
+        </dl>
+      </section>
     </ToolShell>
   );
 }

@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { DropZone } from "../components/DropZone";
+import { Seo } from "../components/Seo";
 import { ToolShell } from "../components/ToolShell";
 import { useObjectUrl } from "../hooks/useObjectUrl";
 import { usePasteImage } from "../hooks/usePasteImage";
 import { cropImageToDataUrl, downloadDataUrl, loadImage } from "../lib/image";
+import { cropSeo, softwareAppJsonLd } from "../lib/seo";
 
 type Aspect = "free" | "1:1" | "16:9" | "4:3" | "3:2" | "9:16";
 
@@ -203,8 +205,8 @@ export function Crop() {
 
   return (
     <ToolShell
-      title="Crop"
-      subtitle="Trim screenshots and photos. Lock an aspect ratio or crop freeform, then export."
+      title="Crop image"
+      subtitle="Free crop tool for screenshots and photos. Lock 16:9, 1:1, 4:3, or crop freeform, then export a PNG."
       actions={
         <>
           <button
@@ -229,12 +231,13 @@ export function Crop() {
                 downloadDataUrl(cropImageToDataUrl(img, crop), "crop.png");
               });
             }}
-          >
-            Download PNG
-          </button>
+        >
+          Download PNG
+        </button>
         </>
       }
     >
+      <Seo page={cropSeo} jsonLd={[softwareAppJsonLd(cropSeo)]} />
       <div className="workspace">
         <aside className="workspace__side">
           <DropZone

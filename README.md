@@ -26,8 +26,10 @@ npm run preview # serve the build locally
 | Route | What it does |
 | --- | --- |
 | `/` | Tool picker |
-| `/remove-bg` | Background removal + color overlay on the cutout |
-| `/crop` | Interactive crop with aspect presets |
+| `/remove-background` | Background removal + color overlay on the cutout |
+| `/crop-image` | Interactive crop with aspect presets |
+
+Legacy aliases (`/remove-bg`, `/background-remover`, `/crop`, …) redirect to the canonical routes above.
 
 Paste images from the clipboard on the remove-bg and crop screens.
 

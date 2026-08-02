@@ -533,6 +533,62 @@ label.btn {
   padding: 0.55rem;
 }
 
+.menu-panel--advanced {
+  min-width: min(16.5rem, calc(100vw - 2rem));
+  display: grid;
+  gap: 0.65rem;
+}
+
+.menu-panel__lead {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.menu-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding-top: 0.15rem;
+}
+
+.check-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  margin: 0;
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.check-row input {
+  margin: 0.2rem 0 0;
+  accent-color: var(--teal-deep);
+}
+
+.check-row span {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.check-row small {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.btn--quiet {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.btn--quiet:not(:disabled):hover {
+  color: var(--ink-soft);
+}
+
 .color-board {
   display: flex;
   align-items: center;

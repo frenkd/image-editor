@@ -125,7 +125,12 @@ export function useRmbgHistory() {
   const replaceActiveCutout = useCallback(
     async (
       cutoutSrc: string,
-      colors?: { colorMode: ColorMode; customColor: string },
+      options?: {
+        colorMode?: ColorMode;
+        customColor?: string;
+        /** When true, drop the stored crop (e.g. after a full re-run). */
+        clearCrop?: boolean;
+      },
     ) => {
       const current = entriesRef.current.find((e) => e.id === activeId);
       if (!current) return;
@@ -133,14 +138,23 @@ export function useRmbgHistory() {
         blobFromSrc(current.sourceUrl),
         blobFromSrc(cutoutSrc),
       ]);
+      const crop =
+        options?.clearCrop || !current.crop
+          ? null
+          : {
+              x: current.crop.x,
+              y: current.crop.y,
+              width: current.crop.width,
+              height: current.crop.height,
+            };
       const stored: StoredHistoryItem = {
         id: current.id,
         createdAt: current.createdAt,
         source,
         cutout,
-        colorMode: colors?.colorMode ?? current.colorMode,
-        customColor: colors?.customColor ?? current.customColor,
-        crop: null,
+        colorMode: options?.colorMode ?? current.colorMode,
+        customColor: options?.customColor ?? current.customColor,
+        crop,
       };
       await putHistoryItem(stored);
       const nextEntry = toEntry(stored);

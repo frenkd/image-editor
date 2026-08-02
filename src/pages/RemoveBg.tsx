@@ -23,6 +23,12 @@ import {
   type ImageSize,
 } from "../lib/image";
 import { RMBG_HISTORY_MAX } from "../lib/rmbgHistory";
+import {
+  cleanCutoutDataUrl,
+  cleanupEnabled,
+  DEFAULT_MASK_CLEANUP,
+  type MaskCleanupOptions,
+} from "../lib/rmbg/maskCleanup";
 import type { BgRemoveProgress } from "../lib/rmbg/removeBackground";
 import {
   estimateProcessMs,
@@ -37,11 +43,34 @@ import {
 } from "../lib/seo";
 
 const COLOR_DEBOUNCE_MS = 140;
+const CLEANUP_STORAGE_KEY = "rmbg.maskCleanup";
 
 type Status = "idle" | "processing" | "ready" | "error";
 type ViewMode = "result" | "compare";
 type StudioMode = "view" | "crop" | "new";
-type OpenMenu = "none" | "color";
+type OpenMenu = "none" | "color" | "advanced";
+
+function readCleanupPrefs(): MaskCleanupOptions {
+  try {
+    const raw = localStorage.getItem(CLEANUP_STORAGE_KEY);
+    if (!raw) return { ...DEFAULT_MASK_CLEANUP };
+    const parsed = JSON.parse(raw) as Partial<MaskCleanupOptions>;
+    return {
+      removeSpeckles: Boolean(parsed.removeSpeckles),
+      fillHoles: Boolean(parsed.fillHoles),
+    };
+  } catch {
+    return { ...DEFAULT_MASK_CLEANUP };
+  }
+}
+
+function writeCleanupPrefs(opts: MaskCleanupOptions) {
+  try {
+    localStorage.setItem(CLEANUP_STORAGE_KEY, JSON.stringify(opts));
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
 
 function progressLabel(p: BgRemoveProgress | null): string {
   if (!p) return "Working…";
@@ -69,8 +98,12 @@ export function RemoveBg() {
   const [resultSize, setResultSize] = useState<ImageSize | null>(null);
   const [processEtaMs, setProcessEtaMs] = useState(5000);
   const [draftColor, setDraftColor] = useState("#00a894");
+  const [cleanup, setCleanup] = useState<MaskCleanupOptions>(readCleanupPrefs);
+  const [cleanupBusy, setCleanupBusy] = useState(false);
   const [isPending, startTransition] = useTransition();
   const runIdRef = useRef(0);
+  const cleanupRef = useRef(cleanup);
+  cleanupRef.current = cleanup;
   const processStartedAtRef = useRef<number | null>(null);
   const runMpRef = useRef(2);
   const cachedModelRef = useRef(modelLikelyCached());
@@ -90,9 +123,11 @@ export function RemoveBg() {
   const cutoutUrl = pendingSourceUrl ? null : (active?.cutoutUrl ?? null);
   const colorActive = colorMode !== "original";
   const ready = Boolean(cutoutUrl) && !pendingSourceUrl;
-  const busy = status === "processing" || isPending;
+  const modelBusy = status === "processing" || isPending;
+  const busy = modelBusy || cleanupBusy;
   const downloadUrl = displayUrl ?? cutoutUrl;
   const empty = !sourceUrl && !cutoutUrl && !busy;
+  const cleanupOn = cleanupEnabled(cleanup);
   const sourceSizeLabel = formatImageSize(sourceSize);
   const resultSizeLabel = formatImageSize(resultSize);
   const modelCached = cachedModelRef.current;
@@ -286,13 +321,17 @@ export function RemoveBg() {
         const { removeImageBackground } = await import(
           "../lib/rmbg/removeBackground"
         );
-        const out = await removeImageBackground(src, (p) => {
-          if (runId !== runIdRef.current) return;
-          if (p.phase === "process" && processStartedAtRef.current == null) {
-            processStartedAtRef.current = performance.now();
-          }
-          setProgress(p);
-        });
+        const out = await removeImageBackground(
+          src,
+          (p) => {
+            if (runId !== runIdRef.current) return;
+            if (p.phase === "process" && processStartedAtRef.current == null) {
+              processStartedAtRef.current = performance.now();
+            }
+            setProgress(p);
+          },
+          { cleanup: cleanupRef.current },
+        );
         if (runId !== runIdRef.current) return;
 
         if (processStartedAtRef.current != null) {
@@ -306,6 +345,7 @@ export function RemoveBg() {
           await history.replaceActiveCutout(out, {
             colorMode: "original",
             customColor: "#00a894",
+            clearCrop: true,
           });
         } else {
           await history.addEntry({
@@ -381,6 +421,36 @@ export function RemoveBg() {
       history.setActiveColors("custom", hex);
       colorDebounceRef.current = null;
     }, COLOR_DEBOUNCE_MS);
+  }
+
+  function updateCleanup(patch: Partial<MaskCleanupOptions>) {
+    setCleanup((prev) => {
+      const next = { ...prev, ...patch };
+      writeCleanupPrefs(next);
+      return next;
+    });
+  }
+
+  async function applyCleanupToResult() {
+    if (!cutoutUrl || !cleanupOn || busy) return;
+    setCleanupBusy(true);
+    setError(null);
+    setOpenMenu("none");
+    try {
+      const cleaned = await cleanCutoutDataUrl(cutoutUrl, cleanup);
+      await history.replaceActiveCutout(cleaned);
+      setStatus("ready");
+    } catch (err) {
+      setStatus("error");
+      setError(err instanceof Error ? err.message : "Cleanup failed");
+    } finally {
+      setCleanupBusy(false);
+    }
+  }
+
+  function rerunFromSource() {
+    if (!sourceUrl || busy) return;
+    run(sourceUrl, history.activeId ? "replace" : "create");
   }
 
   function toggleMenu(menu: Exclude<OpenMenu, "none">) {
@@ -548,7 +618,7 @@ export function RemoveBg() {
             ) : (
               <>
                 <div className="studio__chrome">
-                  {busy ? (
+                  {modelBusy ? (
                     <div className="progress-rail" role="status">
                       <div className="progress-rail__meta">
                         <span>{progressLabel(progress)}</span>
@@ -725,6 +795,78 @@ export function RemoveBg() {
                         >
                           Crop
                         </button>
+
+                        <div className="menu" data-studio-menu>
+                          <button
+                            type="button"
+                            className={`btn btn--ghost btn--small btn--quiet ${openMenu === "advanced" || cleanupOn ? "is-active-tool" : ""}`}
+                            aria-expanded={openMenu === "advanced"}
+                            disabled={!ready && !sourceUrl}
+                            onClick={() => toggleMenu("advanced")}
+                          >
+                            Advanced{cleanupOn ? " · on" : ""}
+                          </button>
+                          {openMenu === "advanced" && (
+                            <div
+                              className="menu-panel menu-panel--advanced"
+                              role="dialog"
+                              aria-label="Advanced mask cleanup"
+                            >
+                              <p className="menu-panel__lead">
+                                Optional mask cleanup. Off by default — can
+                                soften fine edges.
+                              </p>
+                              <label className="check-row">
+                                <input
+                                  type="checkbox"
+                                  checked={cleanup.removeSpeckles}
+                                  onChange={(e) =>
+                                    updateCleanup({
+                                      removeSpeckles: e.target.checked,
+                                    })
+                                  }
+                                />
+                                <span>
+                                  Remove speckles
+                                  <small>Drop leftover background bits</small>
+                                </span>
+                              </label>
+                              <label className="check-row">
+                                <input
+                                  type="checkbox"
+                                  checked={cleanup.fillHoles}
+                                  onChange={(e) =>
+                                    updateCleanup({
+                                      fillHoles: e.target.checked,
+                                    })
+                                  }
+                                />
+                                <span>
+                                  Fill holes
+                                  <small>Restore gaps cut into the subject</small>
+                                </span>
+                              </label>
+                              <div className="menu-panel__actions">
+                                <button
+                                  type="button"
+                                  className="btn btn--primary btn--small"
+                                  disabled={!ready || !cleanupOn || cleanupBusy}
+                                  onClick={() => void applyCleanupToResult()}
+                                >
+                                  Apply to result
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn btn--ghost btn--small"
+                                  disabled={!sourceUrl || busy}
+                                  onClick={rerunFromSource}
+                                >
+                                  Re-run removal
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </>
                   )}

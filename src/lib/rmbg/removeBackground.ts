@@ -4,12 +4,18 @@
  */
 
 import {
+  cleanAlphaMask,
+  cleanupEnabled,
+  type MaskCleanupOptions,
+} from "./maskCleanup";
+import {
   ensureRmbgPipeline,
   getRmbgBackend,
   type RmbgProgress,
 } from "./rmbgModel";
 
 export type BgRemoveProgress = RmbgProgress;
+export type { MaskCleanupOptions };
 
 type SegmentationOutput = {
   mask?: {
@@ -262,10 +268,14 @@ function applyMaskToPngDataUrl(
     channels: number;
     data: Uint8Array | Uint8ClampedArray;
   },
+  cleanup?: MaskCleanupOptions,
 ): string {
   const w = source.width;
   const h = source.height;
   const alpha = resizeMaskAlpha(mask, w, h);
+  if (cleanup && cleanupEnabled(cleanup)) {
+    cleanAlphaMask(alpha, w, h, cleanup);
+  }
   const rgba = new Uint8ClampedArray(w * h * 4);
   const ch = source.channels;
 
@@ -294,6 +304,7 @@ function applyMaskToPngDataUrl(
 export async function removeImageBackground(
   imageSrc: string,
   onProgress?: (p: BgRemoveProgress) => void,
+  options?: { cleanup?: MaskCleanupOptions },
 ): Promise<string> {
   if (!imageSrc.trim()) {
     throw new Error("Upload or select a photo first.");
@@ -325,5 +336,10 @@ export async function removeImageBackground(
     throw new Error("Background removal produced no mask.");
   }
 
-  return applyMaskToPngDataUrl(image, seg.mask);
+  const cleanup = options?.cleanup;
+  if (cleanup && cleanupEnabled(cleanup)) {
+    onProgress?.({ phase: "process", message: "Cleaning mask…" });
+  }
+
+  return applyMaskToPngDataUrl(image, seg.mask, cleanup);
 }

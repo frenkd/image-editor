@@ -20,6 +20,18 @@ npm run build
 npm run preview
 ```
 
+## CLI (agents / scripts)
+
+Remove a background from a local file or image URL (writes a PNG):
+
+```bash
+npm run remove-bg -- ./photo.jpg
+npm run remove-bg -- https://example.com/car.jpg ./car.png
+npm run remove-bg -- ./logo.jpg ./logo.png --color #00a894
+```
+
+Agent discovery files on the deployed site: [`/llms.txt`](https://cutbg.vercel.app/llms.txt), [`/agents.txt`](https://cutbg.vercel.app/agents.txt). Web deep link: `/?src=<image-url>`.
+
 ## Notes
 
 - Pin `@huggingface/transformers` to `3.4.2`

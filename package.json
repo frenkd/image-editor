@@ -25,7 +25,11 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "remove-bg": "node scripts/remove-bg.mjs"
+  },
+  "bin": {
+    "cutbg": "scripts/remove-bg.mjs"
   },
   "dependencies": {
     "@huggingface/transformers": "3.4.2",
@@ -41,6 +45,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.4",
     "oxlint": "^1.75.0",
+    "sharp": "^0.35.3",
     "typescript": "~6.0.2",
     "vite": "^8.2.0"
   }

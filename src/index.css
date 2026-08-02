@@ -231,9 +231,19 @@ code {
   line-height: 1.5;
 }
 
-.doc__note a {
+.doc__notes {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.doc__note a,
+.flow-steps__body a {
   color: var(--ink);
   border-bottom: 1px solid var(--line-strong);
+}
+
+.flow-steps__body a:hover {
+  border-color: var(--ink);
 }
 
 .use-cases {
@@ -309,6 +319,10 @@ code {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.use-case__frame--checker img {
+  object-fit: contain;
 }
 
 .use-case__frame--checker {

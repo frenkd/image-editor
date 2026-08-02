@@ -1,0 +1,5 @@
+# agents.txt
+# Standard: https://agents-txt.com
+# JSON: https://cutbg.vercel.app/agents.json
+
+Skills: https://cutbg.vercel.app/agent-skills/remove-background/SKILL.md

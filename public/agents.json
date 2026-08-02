@@ -1,0 +1,21 @@
+{
+  "version": "1.0",
+  "standard": "https://agents-txt.com",
+  "site": "https://cutbg.vercel.app",
+  "skills": [
+    {
+      "url": "https://cutbg.vercel.app/agent-skills/remove-background/SKILL.md",
+      "name": "remove-background",
+      "description": "Remove image backgrounds locally with RMBG-1.4 via npm run remove-bg or /?src= image deep link."
+    }
+  ],
+  "capabilities": {
+    "background_removal": {
+      "cli": "npm run remove-bg -- <input> [output.png] [--color #rrggbb]",
+      "repository": "https://github.com/frenkd/image-editor",
+      "web_deep_link": "https://cutbg.vercel.app/?src=<image-url>",
+      "model": "briaai/RMBG-1.4",
+      "uploads_images_to_site": false
+    }
+  }
+}

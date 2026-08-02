@@ -1,0 +1,32 @@
+# cutbg (Remove Background)
+> Local-first open-source background remover. Runs RMBG-1.4 in the browser or via a Node CLI. No photo upload to the site.
+
+Images stay on the device. The model downloads from Hugging Face once. Optional color fill and crop in the web UI.
+
+## Agent how-to
+- [Remove-background skill](https://cutbg.vercel.app/agent-skills/remove-background/SKILL.md): CLI and `?src=` deep-link instructions for agents
+- [agents.txt](https://cutbg.vercel.app/agents.txt): capability declaration
+- [agents.json](https://cutbg.vercel.app/agents.json): structured capability catalog
+
+## CLI (preferred for agents)
+Clone https://github.com/frenkd/image-editor then:
+
+```bash
+npm install
+npm run remove-bg -- <input-or-url> [output.png] [--color #rrggbb]
+```
+
+## Web
+- App: https://cutbg.vercel.app/
+- Deep link: https://cutbg.vercel.app/?src=<image-url>
+
+## Docs
+- [How it works](https://cutbg.vercel.app/how-it-works)
+- [FAQ](https://cutbg.vercel.app/faq)
+- [Use cases](https://cutbg.vercel.app/use-cases)
+- [Privacy](https://cutbg.vercel.app/privacy)
+- [Source](https://github.com/frenkd/image-editor)
+
+## Optional
+- [Terms](https://cutbg.vercel.app/terms)
+- [RMBG-1.4 model](https://huggingface.co/briaai/RMBG-1.4)

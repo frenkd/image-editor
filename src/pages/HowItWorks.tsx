@@ -1,8 +1,13 @@
+import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { DocShell } from "../components/DocShell";
 import { howItWorksSeo } from "../lib/seo";
 
-const STEPS = [
+const STEPS: {
+  n: string;
+  title: string;
+  body: ReactNode;
+}[] = [
   {
     n: "1",
     title: "Paste or drop",
@@ -10,8 +15,19 @@ const STEPS = [
   },
   {
     n: "2",
-    title: "Model once",
-    body: "RMBG-1.4 downloads from Hugging Face and caches in the browser.",
+    title: "Download once",
+    body: (
+      <>
+        <a
+          href="https://huggingface.co/briaai/RMBG-1.4"
+          target="_blank"
+          rel="noreferrer"
+        >
+          RMBG-1.4
+        </a>{" "}
+        downloads from Hugging Face and caches in the browser.
+      </>
+    ),
   },
   {
     n: "3",
@@ -23,14 +39,13 @@ const STEPS = [
     title: "Edit & save",
     body: "Optional color or crop, then download a PNG.",
   },
-] as const;
+];
 
 export function HowItWorks() {
   return (
     <DocShell page={howItWorksSeo} title="How it works">
       <p className="doc__lede">
-        A free background remover that keeps your image on this device. One open
-        model, local cutout, no account.
+        A free background remover that keeps your image on this device.
       </p>
 
       <ol className="flow-steps">
@@ -45,20 +60,15 @@ export function HowItWorks() {
         ))}
       </ol>
 
-      <p className="doc__note">
-        Model:{" "}
-        <a
-          href="https://huggingface.co/briaai/RMBG-1.4"
-          target="_blank"
-          rel="noreferrer"
-        >
-          briaai/RMBG-1.4
-        </a>
-        . Recent cutouts stay in this browser (IndexedDB).
-        <br />
-        More detail in the <Link to="/faq">FAQ</Link>. Examples in{" "}
-        <Link to="/use-cases">common use cases</Link>.
-      </p>
+      <div className="doc__notes">
+        <p className="doc__note">
+          Recent cutouts stay in this browser (IndexedDB).
+        </p>
+        <p className="doc__note">
+          More detail in the <Link to="/faq">FAQ</Link>. Examples in{" "}
+          <Link to="/use-cases">common use cases</Link>.
+        </p>
+      </div>
 
       <p className="explain__cta">
         <Link to="/" className="btn btn--primary">

@@ -5,7 +5,7 @@ import {
   useTransition,
   type CSSProperties,
 } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { DropZone } from "../components/DropZone";
 import { InlineCropper } from "../components/InlineCropper";
 import { Seo } from "../components/Seo";
@@ -84,6 +84,8 @@ function progressLabel(p: BgRemoveProgress | null): string {
 
 export function RemoveBg() {
   const history = useRmbgHistory();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const agentSrcConsumed = useRef(false);
   const [pendingSourceUrl, setPendingSourceUrl] = useState<string | null>(null);
   const pendingObjectUrlRef = useRef<string | null>(null);
   const [status, setStatus] = useState<Status>("idle");
@@ -386,6 +388,25 @@ export function RemoveBg() {
     setPendingSourceUrl(src);
     run(src, "create");
   }
+  const ingestSrcRef = useRef(ingestSrc);
+  ingestSrcRef.current = ingestSrc;
+
+  /** Agent / deep-link: /?src=https://…image.jpg starts removal once. */
+  useEffect(() => {
+    if (agentSrcConsumed.current || !history.hydrated || busy) return;
+    const src =
+      searchParams.get("src") ||
+      searchParams.get("url") ||
+      searchParams.get("image");
+    if (!src?.trim()) return;
+    agentSrcConsumed.current = true;
+    const next = new URLSearchParams(searchParams);
+    next.delete("src");
+    next.delete("url");
+    next.delete("image");
+    setSearchParams(next, { replace: true });
+    void ingestSrcRef.current(src.trim());
+  }, [history.hydrated, searchParams, setSearchParams, busy]);
 
   function onSelect(id: string) {
     if (busy || studioMode === "crop") return;

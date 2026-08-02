@@ -29,4 +29,8 @@ export const FAQ_ITEMS = [
     q: "Can I recolor or crop after removal?",
     a: "Yes. After the cutout, use Color or Crop, then download a PNG.",
   },
+  {
+    q: "Can AI agents use this?",
+    a: "Yes. Agents should read /llms.txt and /agents.txt. Preferred path: clone the GitHub repo and run npm run remove-bg -- <file-or-url> [out.png]. The web app also accepts /?src=<image-url> when CORS allows the image. See the remove-background skill linked from agents.txt.",
+  },
 ] as const;

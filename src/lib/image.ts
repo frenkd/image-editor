@@ -92,7 +92,11 @@ export async function applyColorOverlay(
 }
 
 export function validateImageFile(file: File): string | null {
-  if (!file.type.startsWith("image/")) {
+  // Some OS paste paths give empty type; accept those if they look like images.
+  const typed = file.type.startsWith("image/");
+  const named = /\.(png|jpe?g|gif|webp|bmp|svg|avif)$/i.test(file.name);
+  const mysteryPaste = !file.type && file.size > 0;
+  if (!typed && !named && !mysteryPaste) {
     return "Please drop an image file.";
   }
   if (file.size > MAX_IMAGE_BYTES) {

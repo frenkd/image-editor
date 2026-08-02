@@ -28,6 +28,17 @@ type RasterImage = {
   data: Uint8Array | Uint8ClampedArray;
 };
 
+type RawImageCtor = {
+  fromURL: (url: string) => Promise<RasterImage>;
+  fromBlob?: (blob: Blob) => Promise<RasterImage>;
+  new (
+    data: Uint8ClampedArray | Uint8Array,
+    width: number,
+    height: number,
+    channels: number,
+  ): RasterImage;
+};
+
 function assertBrowser() {
   if (typeof window === "undefined") {
     throw new Error("Background removal is only available in the browser.");
@@ -41,56 +52,139 @@ async function getSegmentationPipeline(
   return (await ensureRmbgPipeline(onProgress)) as SegmentationPipeline;
 }
 
-async function loadRawImage(src: string, RawImage: unknown): Promise<RasterImage> {
-  const RI = RawImage as {
-    fromURL: (url: string) => Promise<RasterImage>;
-    new (
-      data: Uint8ClampedArray,
-      width: number,
-      height: number,
-      channels: number,
-    ): RasterImage;
-  };
+function isBlobOrDataUrl(src: string): boolean {
+  return (
+    src.startsWith("blob:") ||
+    src.startsWith("data:") ||
+    src.startsWith("file:")
+  );
+}
+
+async function rasterFromImageBitmap(
+  bitmap: ImageBitmap,
+  RawImage: RawImageCtor,
+): Promise<RasterImage> {
+  const canvas = document.createElement("canvas");
+  canvas.width = bitmap.width;
+  canvas.height = bitmap.height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas 2D unavailable");
+  ctx.drawImage(bitmap, 0, 0);
+  bitmap.close();
+  const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  return new RawImage(data, canvas.width, canvas.height, 4);
+}
+
+async function rasterFromBlob(
+  blob: Blob,
+  RawImage: RawImageCtor,
+): Promise<RasterImage> {
+  if (typeof RawImage.fromBlob === "function") {
+    try {
+      return await RawImage.fromBlob(blob);
+    } catch {
+      /* fall through */
+    }
+  }
+  if (typeof createImageBitmap === "function") {
+    try {
+      const bitmap = await createImageBitmap(blob);
+      return await rasterFromImageBitmap(bitmap, RawImage);
+    } catch {
+      /* fall through */
+    }
+  }
+  const objectUrl = URL.createObjectURL(blob);
   try {
-    return await RI.fromURL(src);
-  } catch {
-    return rawImageFromHtmlImage(src, RI);
+    return await rasterFromHtmlImage(objectUrl, RawImage, false);
+  } finally {
+    URL.revokeObjectURL(objectUrl);
   }
 }
 
-function rawImageFromHtmlImage(
+function rasterFromHtmlImage(
   src: string,
-  RawImage: {
-    new (
-      data: Uint8ClampedArray,
-      width: number,
-      height: number,
-      channels: number,
-    ): RasterImage;
-  },
+  RawImage: RawImageCtor,
+  useCors: boolean,
 ): Promise<RasterImage> {
   return new Promise<RasterImage>((resolve, reject) => {
     const img = new Image();
-    img.crossOrigin = "anonymous";
+    // Never set crossOrigin on blob:/data: — it breaks loading in Chromium.
+    if (useCors && !isBlobOrDataUrl(src)) {
+      img.crossOrigin = "anonymous";
+    }
     img.onload = () => {
-      const w = img.naturalWidth;
-      const h = img.naturalHeight;
-      const canvas = document.createElement("canvas");
-      canvas.width = w;
-      canvas.height = h;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        reject(new Error("Canvas 2D unavailable"));
-        return;
+      try {
+        const w = img.naturalWidth;
+        const h = img.naturalHeight;
+        if (!w || !h) {
+          reject(new Error("Image has zero dimensions."));
+          return;
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          reject(new Error("Canvas 2D unavailable"));
+          return;
+        }
+        ctx.drawImage(img, 0, 0);
+        const { data } = ctx.getImageData(0, 0, w, h);
+        resolve(new RawImage(data, w, h, 4));
+      } catch (err) {
+        reject(
+          err instanceof Error
+            ? err
+            : new Error("Could not read image pixels (CORS)."),
+        );
       }
-      ctx.drawImage(img, 0, 0);
-      const { data } = ctx.getImageData(0, 0, w, h);
-      resolve(new RawImage(data, w, h, 4));
     };
     img.onerror = () =>
       reject(new Error("Failed to load image for background removal"));
     img.src = src;
   });
+}
+
+async function loadRawImage(
+  src: string,
+  RawImage: RawImageCtor,
+): Promise<RasterImage> {
+  // Fast path for pasted / dropped local blobs.
+  if (src.startsWith("blob:") || src.startsWith("data:")) {
+    try {
+      const res = await fetch(src);
+      const blob = await res.blob();
+      return await rasterFromBlob(blob, RawImage);
+    } catch {
+      return rasterFromHtmlImage(src, RawImage, false);
+    }
+  }
+
+  // Remote URL: prefer fetch→blob so we own the bytes (avoids tainted canvas).
+  try {
+    const res = await fetch(src);
+    if (res.ok) {
+      const blob = await res.blob();
+      if (blob.type.startsWith("image/") || blob.size > 0) {
+        return await rasterFromBlob(blob, RawImage);
+      }
+    }
+  } catch {
+    /* try other loaders */
+  }
+
+  try {
+    return await RawImage.fromURL(src);
+  } catch {
+    /* continue */
+  }
+
+  try {
+    return await rasterFromHtmlImage(src, RawImage, true);
+  } catch {
+    return rasterFromHtmlImage(src, RawImage, false);
+  }
 }
 
 function maskAlphaAt(
@@ -208,7 +302,7 @@ export async function removeImageBackground(
   onProgress?.({ phase: "process", message: "Removing background…" });
 
   const { RawImage } = await import("@huggingface/transformers");
-  const image = await loadRawImage(imageSrc, RawImage);
+  const image = await loadRawImage(imageSrc, RawImage as RawImageCtor);
 
   const outputs = (await segmentator(image, {
     threshold: 0.5,

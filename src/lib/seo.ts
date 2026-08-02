@@ -4,7 +4,7 @@ export const SITE_URL =
   (import.meta.env.VITE_SITE_URL as string | undefined)?.replace(/\/$/, "") ||
   "https://image-editor-chi-weld.vercel.app";
 
-export const SITE_NAME = "Image Editor";
+export const SITE_NAME = "Remove Background";
 
 export type PageSeo = {
   path: string;
@@ -17,27 +17,9 @@ export type PageSeo = {
 
 export const homeSeo: PageSeo = {
   path: "/",
-  title: "Free Image Editor: Remove Background & Crop Screenshots Locally",
+  title: "Remove Image Background Free (Local AI, No Upload)",
   description:
-    "Free local image editor to remove image backgrounds, erase photo backgrounds, and crop screenshots in your browser. No upload, no account. Open-source AI background remover on your laptop.",
-  keywords: [
-    "image editor",
-    "remove background",
-    "remove image background",
-    "background remover",
-    "free background remover",
-    "crop screenshot",
-    "local image editor",
-    "remove bg",
-  ],
-};
-
-export const removeBgSeo: PageSeo = {
-  path: "/remove-background",
-  title:
-    "Remove Image Background Free: Local AI Background Remover (No Upload)",
-  description:
-    "Remove image background free in your browser. Local AI background remover for photos, logos, and people. No upload cloud, private on-device cutouts, then recolor black, white, or any color.",
+    "Free AI background remover in your browser. Remove image backgrounds locally with no upload. Optional color fill and crop, then download a PNG.",
   keywords: [
     "remove image background",
     "remove background",
@@ -54,21 +36,8 @@ export const removeBgSeo: PageSeo = {
   ],
 };
 
-export const cropSeo: PageSeo = {
-  path: "/crop-image",
-  title: "Crop Image & Screenshot Free: Aspect Ratio Crop Tool",
-  description:
-    "Free online crop tool for images and screenshots. Lock 16:9, 1:1, 4:3, or crop freeform, then download a PNG. Runs locally in your browser.",
-  keywords: [
-    "crop image",
-    "crop screenshot",
-    "crop photo",
-    "aspect ratio crop",
-    "crop 16:9",
-    "free crop tool",
-    "trim screenshot",
-  ],
-};
+/** @deprecated alias of homeSeo for older imports */
+export const removeBgSeo = homeSeo;
 
 export function absoluteUrl(path: string): string {
   if (path.startsWith("http")) return path;
@@ -92,8 +61,8 @@ export function webAppJsonLd(): Record<string, unknown> {
     description: homeSeo.description,
     featureList: [
       "Remove image background locally with AI",
-      "Recolor cutouts black, white, or custom color",
-      "Crop images and screenshots with aspect presets",
+      "Optional color overlay on cutouts",
+      "Optional crop after background removal",
     ],
   };
 }

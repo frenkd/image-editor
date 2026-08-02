@@ -102,7 +102,10 @@ export function useRmbgHistory() {
   );
 
   const replaceActiveCutout = useCallback(
-    async (cutoutSrc: string) => {
+    async (
+      cutoutSrc: string,
+      colors?: { colorMode: ColorMode; customColor: string },
+    ) => {
       const current = entriesRef.current.find((e) => e.id === activeId);
       if (!current) return;
       const [source, cutout] = await Promise.all([
@@ -114,8 +117,8 @@ export function useRmbgHistory() {
         createdAt: current.createdAt,
         source,
         cutout,
-        colorMode: current.colorMode,
-        customColor: current.customColor,
+        colorMode: colors?.colorMode ?? current.colorMode,
+        customColor: colors?.customColor ?? current.customColor,
       };
       await putHistoryItem(stored);
       const nextEntry = toEntry(stored);

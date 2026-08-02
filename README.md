@@ -1,11 +1,12 @@
-# Image Editor
+# Remove Background
 
-Local-first, open-source image tools that run in your browser.
+Local-first, open-source background remover that runs in your browser.
 
-- **Remove background**: on-device cutouts with [RMBG-1.4](https://huggingface.co/briaai/RMBG-1.4) via [Transformers.js](https://huggingface.co/docs/transformers.js), plus a color overlay (black / white / picker) that keeps the alpha mask
-- **Crop**: freeform or locked aspect ratios for screenshots and photos
+- Drop or paste an image (Ctrl/Cmd+V)
+- Cut out with [RMBG-1.4](https://huggingface.co/briaai/RMBG-1.4) via [Transformers.js](https://huggingface.co/docs/transformers.js)
+- Optionally recolor or crop the cutout, then download a PNG
 
-Nothing is uploaded to a server. The background-removal model downloads from Hugging Face on first use (~40MB) and is cached by the browser afterwards.
+Nothing is uploaded to a server. The model downloads from Hugging Face on first use (~40MB) and is cached afterwards.
 
 ## Quick start
 
@@ -14,39 +15,16 @@ npm install
 npm run dev
 ```
 
-Open the URL Vite prints (usually `http://localhost:5173`).
-
 ```bash
-npm run build   # production build → dist/
-npm run preview # serve the build locally
+npm run build
+npm run preview
 ```
 
-## Tools
+## Notes
 
-| Route | What it does |
-| --- | --- |
-| `/` | Tool picker |
-| `/remove-background` | Background removal + color overlay on the cutout |
-| `/crop-image` | Interactive crop with aspect presets |
-
-Legacy aliases (`/remove-bg`, `/background-remover`, `/crop`, …) redirect to the canonical routes above.
-
-Paste images from the clipboard on the remove-bg and crop screens.
-
-## Background removal notes
-
-- Model ID: `briaai/RMBG-1.4`
-- Task: `image-segmentation` (not the v4 `background-removal` task; Segformer is rejected there)
-- Pinned dependency: `@huggingface/transformers@3.4.2`
-- Cold start can take 15–60s while the model downloads; warm runs are much faster
-
-Pipeline adapted from the [sloai-org](https://github.com/sloai-org) dither / event-image tooling.
-
-## Stack
-
-- Vite + React + TypeScript
-- React Router
-- Transformers.js (WebGPU / WASM as available)
+- Pin `@huggingface/transformers` to `3.4.2`
+- Recent cutouts are stored in IndexedDB on this device
+- `/remove-background` and a few aliases also work; the app lives at `/`
 
 ## License
 

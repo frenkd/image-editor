@@ -1,37 +1,40 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { DropZone } from "../components/DropZone";
+import { InlineCropper } from "../components/InlineCropper";
 import { Seo } from "../components/Seo";
-import { ToolShell } from "../components/ToolShell";
 import { usePasteImage } from "../hooks/usePasteImage";
 import { useRmbgHistory } from "../hooks/useRmbgHistory";
 import { applyColorOverlay, downloadDataUrl, validateImageFile } from "../lib/image";
 import { RMBG_HISTORY_MAX, type ColorMode } from "../lib/rmbgHistory";
 import type { BgRemoveProgress } from "../lib/rmbg/removeBackground";
 import {
+  homeSeo,
   removeBgFaqJsonLd,
-  removeBgSeo,
   softwareAppJsonLd,
+  webAppJsonLd,
 } from "../lib/seo";
 
 type Status = "idle" | "processing" | "ready" | "error";
+type ViewMode = "result" | "compare";
+type StudioMode = "view" | "crop";
 
 const COLOR_PRESETS: {
   id: Exclude<ColorMode, "custom">;
   label: string;
 }[] = [
-  { id: "original", label: "Original" },
+  { id: "original", label: "None" },
   { id: "black", label: "Black" },
   { id: "white", label: "White" },
 ];
 
 function progressLabel(p: BgRemoveProgress | null): string {
-  if (!p) return "Processing…";
+  if (!p) return "Working…";
   if (p.phase === "download") {
     return typeof p.percent === "number"
-      ? `${p.message} (${Math.round(p.percent)}%)`
-      : p.message;
+      ? `Downloading model ${Math.round(p.percent)}%`
+      : "Downloading model…";
   }
-  return p.message;
+  return "Removing…";
 }
 
 export function RemoveBg() {
@@ -42,6 +45,10 @@ export function RemoveBg() {
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState<BgRemoveProgress | null>(null);
   const [displayUrl, setDisplayUrl] = useState<string | null>(null);
+  const [colorPanelOpen, setColorPanelOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>("result");
+  const [studioMode, setStudioMode] = useState<StudioMode>("view");
   const [isPending, startTransition] = useTransition();
   const runIdRef = useRef(0);
 
@@ -50,10 +57,21 @@ export function RemoveBg() {
   const customColor = active?.customColor ?? "#00a894";
   const sourceUrl = pendingSourceUrl ?? active?.sourceUrl ?? null;
   const cutoutUrl = pendingSourceUrl ? null : (active?.cutoutUrl ?? null);
+  const colorActive = colorMode !== "original";
+  const ready = Boolean(cutoutUrl) && !pendingSourceUrl;
+  const busy = status === "processing" || isPending;
+  const downloadUrl = displayUrl ?? cutoutUrl;
+  const empty = !sourceUrl && !cutoutUrl && !busy;
 
   usePasteImage({
-    onFile: (file) => void ingestFile(file),
-    onSrc: (src) => void ingestSrc(src),
+    onFile: (file) => {
+      if (studioMode === "crop" || busy) return;
+      void ingestFile(file);
+    },
+    onSrc: (src) => {
+      if (studioMode === "crop" || busy) return;
+      void ingestSrc(src);
+    },
     onError: (message) => {
       setError(message);
       setStatus("error");
@@ -106,15 +124,15 @@ export function RemoveBg() {
     setPendingSourceUrl(null);
   }
 
-  function run(
-    src: string,
-    mode: "create" | "replace",
-  ) {
+  function run(src: string, mode: "create" | "replace") {
     const runId = ++runIdRef.current;
     setStatus("processing");
     setError(null);
     setProgress(null);
     setDisplayUrl(null);
+    setColorPanelOpen(false);
+    setStudioMode("view");
+    setViewMode("result");
 
     startTransition(async () => {
       try {
@@ -127,7 +145,10 @@ export function RemoveBg() {
         if (runId !== runIdRef.current) return;
 
         if (mode === "replace" && history.activeId) {
-          await history.replaceActiveCutout(out);
+          await history.replaceActiveCutout(out, {
+            colorMode: "original",
+            customColor: "#00a894",
+          });
         } else {
           await history.addEntry({
             sourceSrc: src,
@@ -169,251 +190,324 @@ export function RemoveBg() {
   }
 
   function onSelect(id: string) {
-    if (status === "processing") return;
+    if (busy || studioMode === "crop") return;
     clearPendingSource();
     history.select(id);
     setStatus("ready");
     setError(null);
+    setColorPanelOpen(false);
+    setStudioMode("view");
+    setViewMode("result");
   }
 
-  const busy = status === "processing" || isPending;
-  const downloadUrl = displayUrl ?? cutoutUrl;
+  async function applyCrop(cropped: string) {
+    await history.replaceActiveCutout(cropped, {
+      colorMode: "original",
+      customColor,
+    });
+    setStudioMode("view");
+    setViewMode("result");
+    setColorPanelOpen(false);
+  }
 
   return (
-    <ToolShell
-      title="Remove image background"
-      subtitle="Free local AI background remover. Cut out photos, logos, and people in your browser, then recolor the cutout. History stays on this device across refresh."
-      actions={
-        <button
-          type="button"
-          className="btn btn--primary"
-          disabled={!downloadUrl}
-          onClick={() =>
-            downloadUrl && downloadDataUrl(downloadUrl, "cutout.png")
-          }
-        >
-          Download PNG
-        </button>
-      }
-    >
+    <div className="studio">
       <Seo
-        page={removeBgSeo}
-        jsonLd={[softwareAppJsonLd(removeBgSeo), removeBgFaqJsonLd()]}
+        page={homeSeo}
+        jsonLd={[webAppJsonLd(), softwareAppJsonLd(homeSeo), removeBgFaqJsonLd()]}
       />
-      <div className="workspace">
-        <aside className="workspace__side">
+
+      <header className="studio__header">
+        <h1 className="studio__title">Remove background</h1>
+        {ready && downloadUrl && studioMode === "view" && (
+          <button
+            type="button"
+            className="btn btn--primary"
+            onClick={() => downloadDataUrl(downloadUrl, "cutout.png")}
+          >
+            Download
+          </button>
+        )}
+      </header>
+
+      {empty && (
+        <div className="studio__hero">
           <DropZone
-            label="Drop a photo"
-            hint="or Ctrl/Cmd+V an image or image link"
+            label="Drop image"
+            hint="or paste"
             onFile={(file) => void ingestFile(file)}
           />
-
-          <div className="control-block">
-            <div className="history-head">
-              <p className="control-label">History</p>
-              <span className="history-count">
-                {history.entries.length}/{RMBG_HISTORY_MAX}
-              </span>
-            </div>
-            {!history.hydrated && (
-              <p className="fineprint">Loading saved cutouts…</p>
-            )}
-            {history.hydrated && history.entries.length === 0 && (
-              <p className="fineprint">
-                Pasted and processed images show up here (kept locally).
-              </p>
-            )}
-            {history.entries.length > 0 && (
-              <ul className="history-list">
-                {history.entries.map((entry, index) => {
-                  const selected =
-                    !pendingSourceUrl && entry.id === history.activeId;
-                  return (
-                    <li key={entry.id}>
-                      <button
-                        type="button"
-                        className={`history-item ${selected ? "is-active" : ""}`}
-                        disabled={busy}
-                        onClick={() => onSelect(entry.id)}
-                      >
-                        <img
-                          src={entry.cutoutUrl}
-                          alt=""
-                          className="history-item__thumb history-item__thumb--checker"
-                        />
-                        <span className="history-item__meta">
-                          <span className="history-item__title">
-                            Cutout {history.entries.length - index}
-                          </span>
-                          <span className="history-item__time">
-                            {new Date(entry.createdAt).toLocaleString([], {
-                              month: "short",
-                              day: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </span>
-                        </span>
-                      </button>
-                      <button
-                        type="button"
-                        className="history-item__remove"
-                        aria-label="Remove from history"
-                        disabled={busy}
-                        onClick={() => void history.remove(entry.id)}
-                      >
-                        ×
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </div>
-
-          {sourceUrl && (
-            <button
-              type="button"
-              className="btn btn--ghost"
-              disabled={busy || !sourceUrl}
-              onClick={() => {
-                if (!sourceUrl) return;
-                if (pendingSourceUrl) run(sourceUrl, "create");
-                else run(sourceUrl, "replace");
-              }}
-            >
-              {busy ? "Working…" : "Run again"}
-            </button>
-          )}
-
-          <div className="control-block">
-            <p className="control-label">Color overlay</p>
-            <div className="chip-row">
-              {COLOR_PRESETS.map((preset) => (
-                <button
-                  key={preset.id}
-                  type="button"
-                  className={`chip ${colorMode === preset.id ? "is-active" : ""}`}
-                  disabled={!cutoutUrl || busy}
-                  onClick={() =>
-                    history.setActiveColors(preset.id, customColor)
-                  }
-                >
-                  {preset.label}
-                </button>
-              ))}
-              <button
-                type="button"
-                className={`chip ${colorMode === "custom" ? "is-active" : ""}`}
-                disabled={!cutoutUrl || busy}
-                onClick={() => history.setActiveColors("custom", customColor)}
-              >
-                Custom
-              </button>
-            </div>
-            <label className="color-picker-row">
-              <input
-                type="color"
-                value={customColor}
-                disabled={!cutoutUrl || busy}
-                onChange={(e) =>
-                  history.setActiveColors("custom", e.target.value)
-                }
-              />
-              <span>{customColor}</span>
-            </label>
-            <p className="fineprint">
-              Recolors the cutout silhouette. Alpha stays; RGB becomes the fill.
-            </p>
-          </div>
-
-          {busy && (
-            <p className="status-line" role="status">
-              {progressLabel(progress)}
-            </p>
-          )}
           {error && (
             <p className="status-line status-line--error" role="alert">
               {error}
             </p>
           )}
-          <p className="fineprint">
-            Model: <code>briaai/RMBG-1.4</code>. History is stored in this
-            browser only (IndexedDB).
-          </p>
-        </aside>
-
-        <div className="workspace__stage">
-          {!sourceUrl && !cutoutUrl && (
-            <div className="stage-empty">
-              Drop, paste an image, or paste an image link to knock out the
-              background.
-            </div>
-          )}
-          {(sourceUrl || cutoutUrl) && (
-            <div className="compare">
-              {sourceUrl && (
-                <figure className="compare__panel">
-                  <figcaption>Original</figcaption>
-                  <div className="compare__frame">
-                    <img src={sourceUrl} alt="Original upload" />
-                  </div>
-                </figure>
-              )}
-              <figure className="compare__panel">
-                <figcaption>
-                  Cutout
-                  {cutoutUrl && colorMode !== "original" ? " · recolored" : ""}
-                </figcaption>
-                <div className="compare__frame compare__frame--checker">
-                  {displayUrl ? (
-                    <img src={displayUrl} alt="Background removed" />
-                  ) : (
-                    <div className="stage-empty stage-empty--inset">
-                      {busy ? progressLabel(progress) : "Result appears here"}
-                    </div>
-                  )}
-                </div>
-              </figure>
-            </div>
-          )}
         </div>
-      </div>
+      )}
 
-      <section className="seo-panel" aria-labelledby="rmbg-faq-heading">
-        <h2 id="rmbg-faq-heading">Free background remover FAQ</h2>
+      {!empty && (
+        <div className="studio__layout">
+          <aside className="studio__rail">
+            <DropZone
+              compact
+              label="New"
+              hint="drop / paste"
+              onFile={(file) => void ingestFile(file)}
+            />
+
+            {history.entries.length > 0 && (
+              <div className="control-block">
+                <button
+                  type="button"
+                  className={`btn btn--ghost btn--small color-overlay-toggle ${historyOpen ? "is-active" : ""}`}
+                  aria-expanded={historyOpen}
+                  onClick={() => setHistoryOpen((o) => !o)}
+                >
+                  <span aria-hidden>{historyOpen ? "▾" : "▸"}</span>
+                  Recent ({history.entries.length}/{RMBG_HISTORY_MAX})
+                </button>
+                {historyOpen && (
+                  <ul className="history-list">
+                    {history.entries.map((entry) => {
+                      const selected =
+                        !pendingSourceUrl && entry.id === history.activeId;
+                      return (
+                        <li key={entry.id}>
+                          <button
+                            type="button"
+                            className={`history-item ${selected ? "is-active" : ""}`}
+                            disabled={busy || studioMode === "crop"}
+                            onClick={() => onSelect(entry.id)}
+                          >
+                            <img
+                              src={entry.cutoutUrl}
+                              alt=""
+                              className="history-item__thumb history-item__thumb--checker"
+                            />
+                            <span className="history-item__meta">
+                              <span className="history-item__time">
+                                {new Date(entry.createdAt).toLocaleString([], {
+                                  month: "short",
+                                  day: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </span>
+                            </span>
+                          </button>
+                          <button
+                            type="button"
+                            className="history-item__remove"
+                            aria-label="Remove"
+                            disabled={busy || studioMode === "crop"}
+                            onClick={() => void history.remove(entry.id)}
+                          >
+                            ×
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            )}
+
+            {busy && (
+              <p className="status-line" role="status">
+                {progressLabel(progress)}
+              </p>
+            )}
+            {error && (
+              <p className="status-line status-line--error" role="alert">
+                {error}
+              </p>
+            )}
+          </aside>
+
+          <div className="studio__main">
+            {ready && studioMode === "view" && (
+              <div className="studio__toolbar">
+                <div className="chip-row" role="group" aria-label="View">
+                  <button
+                    type="button"
+                    className={`chip ${viewMode === "result" ? "is-active" : ""}`}
+                    onClick={() => setViewMode("result")}
+                  >
+                    Result
+                  </button>
+                  <button
+                    type="button"
+                    className={`chip ${viewMode === "compare" ? "is-active" : ""}`}
+                    onClick={() => setViewMode("compare")}
+                  >
+                    Compare
+                  </button>
+                </div>
+
+                <div className="studio__toolbar-tools">
+                  <button
+                    type="button"
+                    className={`btn btn--ghost btn--small ${colorPanelOpen || colorActive ? "is-active-tool" : ""}`}
+                    aria-expanded={colorPanelOpen}
+                    onClick={() => setColorPanelOpen((o) => !o)}
+                  >
+                    Color{colorActive ? " · on" : ""}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn--ghost btn--small"
+                    disabled={!downloadUrl}
+                    onClick={() => {
+                      setColorPanelOpen(false);
+                      setStudioMode("crop");
+                    }}
+                  >
+                    Crop
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {ready && studioMode === "view" && colorPanelOpen && (
+              <div className="color-overlay-panel studio__color-panel">
+                <div className="chip-row">
+                  {COLOR_PRESETS.map((preset) => (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      className={`chip ${colorMode === preset.id ? "is-active" : ""}`}
+                      onClick={() =>
+                        history.setActiveColors(preset.id, customColor)
+                      }
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    className={`chip ${colorMode === "custom" ? "is-active" : ""}`}
+                    onClick={() =>
+                      history.setActiveColors("custom", customColor)
+                    }
+                  >
+                    Custom
+                  </button>
+                </div>
+                {colorMode === "custom" && (
+                  <label className="color-picker-row">
+                    <input
+                      type="color"
+                      value={customColor}
+                      onChange={(e) =>
+                        history.setActiveColors("custom", e.target.value)
+                      }
+                    />
+                    <span>{customColor}</span>
+                  </label>
+                )}
+              </div>
+            )}
+
+            {studioMode === "crop" && downloadUrl ? (
+              <InlineCropper
+                imageUrl={downloadUrl}
+                onCancel={() => setStudioMode("view")}
+                onApply={(cropped) => void applyCrop(cropped)}
+              />
+            ) : (
+              <div className="studio__stage">
+                {busy && !displayUrl && (
+                  <div className="stage-empty">
+                    <p>{progressLabel(progress)}</p>
+                    {sourceUrl && (
+                      <img
+                        src={sourceUrl}
+                        alt=""
+                        className="studio__processing-thumb"
+                      />
+                    )}
+                  </div>
+                )}
+
+                {!busy && viewMode === "compare" && sourceUrl && (
+                  <div className="compare">
+                    <figure className="compare__panel">
+                      <figcaption>Before</figcaption>
+                      <div className="compare__frame">
+                        <img src={sourceUrl} alt="Original" />
+                      </div>
+                    </figure>
+                    <figure className="compare__panel">
+                      <figcaption>After</figcaption>
+                      <div className="compare__frame compare__frame--checker">
+                        {displayUrl ? (
+                          <img src={displayUrl} alt="Background removed" />
+                        ) : (
+                          <div className="stage-empty stage-empty--inset">…</div>
+                        )}
+                      </div>
+                    </figure>
+                  </div>
+                )}
+
+                {!busy && viewMode === "result" && (
+                  <div className="studio__result">
+                    {displayUrl ? (
+                      <div className="studio__result-frame compare__frame--checker">
+                        <img src={displayUrl} alt="Background removed" />
+                      </div>
+                    ) : sourceUrl ? (
+                      <div className="compare__frame">
+                        <img src={sourceUrl} alt="Original" />
+                      </div>
+                    ) : null}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      <footer className="studio__footer">
+        <a
+          href="https://github.com/frenkd/image-editor"
+          target="_blank"
+          rel="noreferrer"
+        >
+          Source
+        </a>
+        <span aria-hidden>·</span>
+        <a href="https://github.com/frenkd" target="_blank" rel="noreferrer">
+          frenkd
+        </a>
+      </footer>
+
+      {/* Collapsed for visitors; still crawlable for SEO */}
+      <details className="studio__seo">
+        <summary>FAQ</summary>
         <dl className="faq-list">
           <div>
             <dt>Is this background remover free?</dt>
             <dd>
-              Yes. Remove image background for free with this open-source tool.
-              No account and no paid tier for the core cutout flow.
+              Yes. Free and open source. Runs in your browser with no account.
             </dd>
           </div>
           <div>
-            <dt>Do my images get uploaded?</dt>
+            <dt>Are images uploaded?</dt>
             <dd>
-              No. The AI model runs locally in your browser. Your photos stay on
-              your device; recent cutouts are saved in IndexedDB for history.
+              No. Removal is on-device. History stays in this browser only.
             </dd>
           </div>
           <div>
-            <dt>How do I remove a logo or photo background?</dt>
+            <dt>How do I remove a background?</dt>
             <dd>
-              Drop or paste an image (Ctrl/Cmd+V works for screenshots and image
-              links), wait for the cutout, optionally recolor it black or white,
-              then download a transparent PNG.
-            </dd>
-          </div>
-          <div>
-            <dt>What model removes the background?</dt>
-            <dd>
-              <code>briaai/RMBG-1.4</code> via Transformers.js. The first run
-              downloads the model from Hugging Face; afterward it is cached.
+              Drop or paste an image, wait for the cutout, optionally use Color
+              or Crop, then download a PNG.
             </dd>
           </div>
         </dl>
-      </section>
-    </ToolShell>
+      </details>
+    </div>
   );
 }

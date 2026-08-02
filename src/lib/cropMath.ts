@@ -22,7 +22,7 @@ export function clampRect(r: Rect, iw: number, ih: number): Rect {
   return { x, y, width, height };
 }
 
-/** Largest comfortable crop rect (optionally aspect-locked), centered. */
+/** Fallback crop when no alpha content is found (optionally aspect-locked). */
 export function defaultCrop(iw: number, ih: number, ratio: number | null): Rect {
   if (!ratio) {
     const m = Math.min(iw, ih) * 0.08;
@@ -39,12 +39,16 @@ export function defaultCrop(iw: number, ih: number, ratio: number | null): Rect 
     height = ih * 0.86;
     width = height * ratio;
   }
-  return {
-    x: (iw - width) / 2,
-    y: (ih - height) / 2,
-    width,
-    height,
-  };
+  return clampRect(
+    {
+      x: (iw - width) / 2,
+      y: (ih - height) / 2,
+      width,
+      height,
+    },
+    iw,
+    ih,
+  );
 }
 
 /** Apply a drag delta to a crop rect, optionally locking aspect ratio. */

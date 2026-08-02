@@ -1,5 +1,10 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
+  contentCropRect,
+  fitCropToContent,
+  imageDataFromElement,
+} from "../lib/contentBounds";
+import {
   applyCropDrag,
   defaultCrop,
   type CropHandle,
@@ -38,6 +43,7 @@ type Props = {
 export function InlineCropper({ imageUrl, onApply, onCancel }: Props) {
   const [aspect, setAspect] = useState<Aspect>("free");
   const [natural, setNatural] = useState<{ w: number; h: number } | null>(null);
+  const [seed, setSeed] = useState<Rect | null>(null);
   const [crop, setCrop] = useState<Rect | null>(null);
   const [scale, setScale] = useState(1);
   const imgRef = useRef<HTMLImageElement>(null);
@@ -51,22 +57,38 @@ export function InlineCropper({ imageUrl, onApply, onCancel }: Props) {
 
   useEffect(() => {
     let cancelled = false;
+    setSeed(null);
+    setCrop(null);
+    setNatural(null);
+
     loadImage(imageUrl).then((img) => {
       if (cancelled) return;
-      const ratio = ASPECTS.find((a) => a.id === aspectRef.current)?.ratio ?? null;
-      setNatural({ w: img.naturalWidth, h: img.naturalHeight });
-      setCrop(defaultCrop(img.naturalWidth, img.naturalHeight, ratio));
+      const w = img.naturalWidth;
+      const h = img.naturalHeight;
+      let nextSeed: Rect;
+      try {
+        nextSeed =
+          contentCropRect(imageDataFromElement(img)) ?? defaultCrop(w, h, null);
+      } catch {
+        nextSeed = defaultCrop(w, h, null);
+      }
+      const ratio =
+        ASPECTS.find((a) => a.id === aspectRef.current)?.ratio ?? null;
+      setNatural({ w, h });
+      setSeed(nextSeed);
+      setCrop(fitCropToContent(nextSeed, w, h, ratio));
     });
+
     return () => {
       cancelled = true;
     };
   }, [imageUrl]);
 
   useEffect(() => {
-    if (!natural) return;
+    if (!natural || !seed) return;
     const ratio = ASPECTS.find((a) => a.id === aspect)?.ratio ?? null;
-    setCrop(defaultCrop(natural.w, natural.h, ratio));
-  }, [aspect, natural]);
+    setCrop(fitCropToContent(seed, natural.w, natural.h, ratio));
+  }, [aspect, natural, seed]);
 
   useLayoutEffect(() => {
     const img = imgRef.current;
@@ -134,8 +156,8 @@ export function InlineCropper({ imageUrl, onApply, onCancel }: Props) {
     : null;
 
   return (
-    <div className="inline-crop">
-      <div className="inline-crop__bar">
+    <>
+      <div className="studio__chrome">
         <div className="chip-row">
           {ASPECTS.map((a) => (
             <button
@@ -158,12 +180,16 @@ export function InlineCropper({ imageUrl, onApply, onCancel }: Props) {
               </span>
             </p>
           )}
-          <button type="button" className="btn btn--ghost" onClick={onCancel}>
+          <button
+            type="button"
+            className="btn btn--ghost btn--small"
+            onClick={onCancel}
+          >
             Cancel
           </button>
           <button
             type="button"
-            className="btn btn--primary"
+            className="btn btn--primary btn--small"
             disabled={!crop}
             onClick={() => {
               if (!crop) return;
@@ -172,12 +198,12 @@ export function InlineCropper({ imageUrl, onApply, onCancel }: Props) {
               });
             }}
           >
-            Apply crop
+            Apply
           </button>
         </div>
       </div>
 
-      <div className="inline-crop__stage">
+      <div className="studio__stage studio__stage--crop">
         <div className="crop-stage">
           <img
             ref={imgRef}
@@ -229,6 +255,6 @@ export function InlineCropper({ imageUrl, onApply, onCancel }: Props) {
           )}
         </div>
       </div>
-    </div>
+    </>
   );
 }

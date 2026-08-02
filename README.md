@@ -30,7 +30,7 @@ No clone required. Point Claude, ChatGPT, Codex, or Cursor at:
 - Discovery: [`/llms.txt`](https://cutbg.vercel.app/llms.txt), [`/agents.txt`](https://cutbg.vercel.app/agents.txt)
 - Deep link: `https://cutbg.vercel.app/?src=<image-url>&via=agent&crop=auto&advanced=1`
 
-`via=agent` tags Vercel Analytics custom events so agent cutouts can be filtered from human UI usage. Skill: [`/agent-skills/remove-background/SKILL.md`](https://cutbg.vercel.app/agent-skills/remove-background/SKILL.md).
+`via=agent` tags Vercel Analytics (`cutout_start` with `client=agent`). Color, crop, and advanced cleanup also emit `tool_color`, `tool_crop`, and `tool_advanced`. Skill: [`/agent-skills/remove-background/SKILL.md`](https://cutbg.vercel.app/agent-skills/remove-background/SKILL.md).
 
 ## Optional CLI (local scripts)
 

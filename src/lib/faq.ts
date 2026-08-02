@@ -35,6 +35,6 @@ export const FAQ_ITEMS = [
   },
   {
     q: "Can analytics tell humans and agents apart?",
-    a: "Page views alone are a weak signal. We emit custom Vercel Analytics events: cutout_start with client=human or client=agent (when via=agent is set), plus agent_discover on /api/capabilities. Filter those in the Analytics Events panel. Images are never sent to analytics.",
+    a: "Page views alone are a weak signal. We emit custom Vercel Analytics events: cutout_start (client=human or agent), tool_color, tool_crop, tool_advanced for studio tools, plus agent_discover on /api/capabilities. Filter those in the Analytics Events panel. Images are never sent to analytics.",
   },
 ] as const;

@@ -33,10 +33,12 @@ Always include `via=agent` so usage is tagged as agent traffic in Analytics.
 | Param | Purpose |
 |-------|---------|
 | `src` / `url` / `image` | Image URL (browser CORS must allow it) |
-| `via=agent` | Tag cutout as agent usage |
-| `color` / `fill` | `#rrggbb` recolor after cutout |
-| `crop=auto` or `x,y,w,h` | Crop after cutout |
-| `advanced=1` | Speckle + tiny hole cleanup |
+| `via=agent` | Tag cutout as agent usage (`cutout_start` client=agent) |
+| `color` / `fill` | `#rrggbb` recolor after cutout (also emits `tool_color`) |
+| `crop=auto` or `x,y,w,h` | Crop after cutout (also emits `tool_crop`) |
+| `advanced=1` | Speckle + tiny hole cleanup (also emits `tool_advanced`) |
+
+Analytics events (no images): `cutout_start`, `tool_color`, `tool_crop`, `tool_advanced`, `agent_discover`, `agent_guide_view`.
 
 ### Prompt sketch
 

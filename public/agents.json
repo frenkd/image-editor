@@ -29,6 +29,14 @@
         "fill-holes"
       ],
       "analytics_tag": "via=agent",
+      "analytics_events": [
+        "cutout_start",
+        "tool_color",
+        "tool_crop",
+        "tool_advanced",
+        "agent_discover",
+        "agent_guide_view"
+      ],
       "guide": "https://cutbg.vercel.app/for-agents",
       "model": "briaai/RMBG-1.4",
       "uploads_images_to_site": false,

@@ -102,7 +102,7 @@ function forAgentsFaqJsonLd(): Record<string, unknown> {
         name: "How is agent traffic tagged in analytics?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "Add via=agent on deep links and on /api/capabilities. cutbg sends Vercel Analytics custom events cutout_start and agent_discover with a client or via property so agent usage can be filtered separately from human UI uploads.",
+          text: "Add via=agent on deep links and on /api/capabilities. cutbg sends Vercel Analytics events cutout_start (client=human|agent), tool_color, tool_crop, tool_advanced, and agent_discover so agent sessions and tool usage can be filtered in the Events panel.",
         },
       },
     ],
@@ -210,6 +210,11 @@ https://cutbg.vercel.app/?src=<IMAGE_URL>&via=agent&color=%23e85d04&crop=auto`}
             <code>cutout_start</code> with <code>client=human</code> (drag/paste
             in the UI), <code>client=agent</code> (<code>via=agent</code>), or{" "}
             <code>client=deep_link</code> (URL without via)
+          </li>
+          <li>
+            <code>tool_color</code>, <code>tool_crop</code>,{" "}
+            <code>tool_advanced</code> when color, crop, or mask cleanup is
+            applied (UI or deep-link options)
           </li>
           <li>
             <code>agent_discover</code> when something hits{" "}

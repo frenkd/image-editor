@@ -20,6 +20,8 @@ Catalog: https://cutbg.vercel.app/agents.json
 
 Query params: `src` / `url` / `image`, `via=agent`, `color` / `fill`, `crop=auto` or `x,y,w,h`, `advanced=1`.
 
+Analytics (Vercel custom events, no images): `cutout_start` (client=human|agent), `tool_color`, `tool_crop`, `tool_advanced`, `agent_discover`.
+
 ## Web
 - App: https://cutbg.vercel.app/
 - For agents: https://cutbg.vercel.app/for-agents

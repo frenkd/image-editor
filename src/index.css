@@ -91,7 +91,7 @@ code {
   border: 0;
 }
 
-/* —— Studio (bg removal first) —— */
+/* -- Studio (bg removal first) -- */
 .studio {
   /* One shell width idle + active so the title/footer never reflow. */
   --studio-rail: 112px;
@@ -1026,7 +1026,7 @@ label.btn {
   font-size: 0.95rem;
 }
 
-/* —— Controls —— */
+/* -- Controls -- */
 .btn {
   appearance: none;
   border: 1px solid var(--ink);
@@ -1305,7 +1305,7 @@ label.btn {
     -8px 0;
 }
 
-/* —— Crop (Photoshop-style) —— */
+/* -- Crop (Photoshop-style) -- */
 .crop-stage {
   position: relative;
   display: inline-block;

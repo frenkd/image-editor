@@ -1,20 +1,20 @@
 import { clampRect, CROP_OVERSCAN, type Rect } from "./cropMath";
 
 /**
- * Rule 1 — Solid content only: alpha below this is empty.
+ * Rule 1 - Solid content only: alpha below this is empty.
  * Kills soft RMBG ghosts, faint UI chrome, and nearly-transparent speckles.
  */
 export const CONTENT_ALPHA = 56;
 
 /**
- * Rule 1b — Blob filter: keep the largest solid connected component, plus any
+ * Rule 1b - Blob filter: keep the largest solid connected component, plus any
  * other blobs that are at least this fraction of the largest (usually hair/parts
  * of the same subject). Tiny remote artefacts are dropped.
  */
 export const MIN_BLOB_FRACTION = 0.04;
 
 /**
- * Rule 2 — Padding: expand the content box by this fraction of the *original*
+ * Rule 2 - Padding: expand the content box by this fraction of the *original*
  * image size on each side (a little breathing room, not pixel-tight).
  * Hard-capped by CROP_OVERSCAN (~3%) in cropMath.
  */
@@ -94,7 +94,7 @@ function solidBlobBounds(
       const x = p % w;
       const y = (p / w) | 0;
 
-      // 4-connected — enough for cutout subjects, cheaper than 8.
+      // 4-connected - enough for cutout subjects, cheaper than 8.
       if (x > 0) {
         const ni = p - 1;
         if (solid[ni] && !labels[ni]) {

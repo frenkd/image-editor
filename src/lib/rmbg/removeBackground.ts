@@ -119,7 +119,7 @@ function rasterFromHtmlImage(
 ): Promise<RasterImage> {
   return new Promise<RasterImage>((resolve, reject) => {
     const img = new Image();
-    // Never set crossOrigin on blob:/data: — it breaks loading in Chromium.
+    // Never set crossOrigin on blob:/data: - it breaks loading in Chromium.
     if (useCors && !isBlobOrDataUrl(src)) {
       img.crossOrigin = "anonymous";
     }

@@ -476,8 +476,8 @@ export function RemoveBg() {
             onFile={(file) => void ingestFile(file)}
           />
           <p className="studio__privacy">
-            Nothing leaves this device ·{" "}
-            <Link to="/how-it-works">How it works</Link>
+            Your images stay on this device ·{" "}
+            <Link to="/privacy">Privacy</Link>
           </p>
           {error && (
             <p className="status-line status-line--error" role="alert">
@@ -585,8 +585,8 @@ export function RemoveBg() {
                       onFile={(file) => void ingestFile(file)}
                     />
                     <p className="studio__privacy">
-                      Nothing leaves this device ·{" "}
-                      <Link to="/how-it-works">How it works</Link>
+                      Your images stay on this device ·{" "}
+                      <Link to="/privacy">Privacy</Link>
                     </p>
                     {error && (
                       <p

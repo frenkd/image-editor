@@ -15,7 +15,7 @@ const MIN = 16;
 
 /**
  * Crop may overhang each image edge by at most this fraction of the image.
- * (Breathing room only — not a way to blow up the canvas.)
+ * (Breathing room only - not a way to blow up the canvas.)
  */
 export const CROP_OVERSCAN = 0.03;
 

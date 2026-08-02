@@ -3,7 +3,11 @@
 export const FAQ_ITEMS = [
   {
     q: "Do images leave my device?",
-    a: "No. Processing runs in your browser. We do not receive your photos.",
+    a: "No. Processing runs in your browser. We do not receive your photos. Recent cutouts stay in this browser only.",
+  },
+  {
+    q: "Do you use analytics?",
+    a: "Yes. The hosted site uses Vercel Analytics for anonymous page-view metrics. It does not receive your images. See the Privacy page for details.",
   },
   {
     q: "What about the Hugging Face download?",

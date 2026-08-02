@@ -54,8 +54,9 @@ export function HowItWorks() {
         >
           briaai/RMBG-1.4
         </a>
-        . Recent cutouts stay in this browser (IndexedDB). More detail in the{" "}
-        <Link to="/faq">FAQ</Link>.
+        . Recent cutouts stay in this browser (IndexedDB).
+        <br />
+        More detail in the <Link to="/faq">FAQ</Link>.
       </p>
 
       <p className="explain__cta">

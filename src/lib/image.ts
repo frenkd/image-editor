@@ -64,7 +64,7 @@ export async function cropSrcToDataUrl(
   return cropImageToDataUrl(image, crop);
 }
 
-/** Parse `#rgb` / `#rrggbb` into 0–255 channels. */
+/** Parse `#rgb` / `#rrggbb` into 0-255 channels. */
 export function parseHexColor(hex: string): { r: number; g: number; b: number } {
   const raw = hex.trim().replace(/^#/, "");
   const full =

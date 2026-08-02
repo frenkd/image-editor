@@ -2,21 +2,22 @@
   "name": "image-editor",
   "private": false,
   "version": "0.1.0",
-  "description": "Local-first open-source image editor: background removal with color overlay, and crop. Runs in your browser.",
+  "description": "Local-first open-source background remover. Cut out images in your browser with RMBG-1.4, optional color and crop.",
   "type": "module",
   "license": "MIT",
   "author": "frenkd",
+  "homepage": "https://cutbg.vercel.app",
   "repository": {
     "type": "git",
     "url": "https://github.com/frenkd/image-editor.git"
   },
   "keywords": [
-    "image-editor",
     "background-removal",
+    "remove-background",
+    "rmbg",
     "crop",
     "color-overlay",
     "transformers.js",
-    "rmbg",
     "local-first",
     "open-source"
   ],

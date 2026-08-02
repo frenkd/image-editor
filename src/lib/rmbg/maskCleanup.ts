@@ -22,6 +22,12 @@ const MIN_BLOB_FRACTION = 0.04;
 
 const MIN_BLOB_AREA = 96;
 
+/**
+ * Max area (px) for a hole we will fill. Arm/torso gaps are far larger;
+ * this only closes pinholes and tiny mask tears inside the subject.
+ */
+const MAX_HOLE_AREA = 320;
+
 export function cleanupEnabled(opts: MaskCleanupOptions): boolean {
   return opts.removeSpeckles || opts.fillHoles;
 }
@@ -161,8 +167,8 @@ function removeSpeckles(
 }
 
 /**
- * Transparent regions that do not touch the image border are treated as holes
- * inside the subject and filled opaque.
+ * Fill only tiny enclosed transparent blobs (pinholes / mask tears).
+ * Larger enclosed gaps (arms akimbo, legs, handles) stay transparent.
  */
 function fillHoles(
   alpha: Uint8ClampedArray | Uint8Array,
@@ -180,37 +186,70 @@ function fillHoles(
   }
   if (emptyCount === 0) return;
 
-  const visited = new Uint8Array(n);
+  const exterior = new Uint8Array(n);
   const stack = new Int32Array(emptyCount);
   let stackLen = 0;
 
-  const pushIfEmpty = (i: number) => {
-    if (empty[i] && !visited[i]) {
-      visited[i] = 1;
+  const pushExterior = (i: number) => {
+    if (empty[i] && !exterior[i]) {
+      exterior[i] = 1;
       stack[stackLen++] = i;
     }
   };
 
   for (let x = 0; x < w; x++) {
-    pushIfEmpty(x);
-    pushIfEmpty((h - 1) * w + x);
+    pushExterior(x);
+    pushExterior((h - 1) * w + x);
   }
   for (let y = 0; y < h; y++) {
-    pushIfEmpty(y * w);
-    pushIfEmpty(y * w + (w - 1));
+    pushExterior(y * w);
+    pushExterior(y * w + (w - 1));
   }
 
   while (stackLen > 0) {
     const p = stack[--stackLen]!;
     const x = p % w;
     const y = (p / w) | 0;
-    if (x > 0) pushIfEmpty(p - 1);
-    if (x + 1 < w) pushIfEmpty(p + 1);
-    if (y > 0) pushIfEmpty(p - w);
-    if (y + 1 < h) pushIfEmpty(p + w);
+    if (x > 0) pushExterior(p - 1);
+    if (x + 1 < w) pushExterior(p + 1);
+    if (y > 0) pushExterior(p - w);
+    if (y + 1 < h) pushExterior(p + w);
+  }
+
+  // Label each enclosed hole; only fill components ≤ MAX_HOLE_AREA.
+  const labels = new Int32Array(n);
+  const areas: number[] = [0];
+  let nextLabel = 1;
+
+  for (let i = 0; i < n; i++) {
+    if (!empty[i] || exterior[i] || labels[i]) continue;
+    const label = nextLabel++;
+    areas[label] = 0;
+    stackLen = 0;
+    stack[stackLen++] = i;
+    labels[i] = label;
+
+    while (stackLen > 0) {
+      const p = stack[--stackLen]!;
+      areas[label]!++;
+      const x = p % w;
+      const y = (p / w) | 0;
+
+      const tryPush = (ni: number) => {
+        if (empty[ni] && !exterior[ni] && !labels[ni]) {
+          labels[ni] = label;
+          stack[stackLen++] = ni;
+        }
+      };
+      if (x > 0) tryPush(p - 1);
+      if (x + 1 < w) tryPush(p + 1);
+      if (y > 0) tryPush(p - w);
+      if (y + 1 < h) tryPush(p + w);
+    }
   }
 
   for (let i = 0; i < n; i++) {
-    if (empty[i] && !visited[i]) alpha[i] = 255;
+    const L = labels[i]!;
+    if (L && areas[L]! <= MAX_HOLE_AREA) alpha[i] = 255;
   }
 }

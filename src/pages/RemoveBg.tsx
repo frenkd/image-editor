@@ -133,7 +133,7 @@ export function RemoveBg() {
   const modelCached = cachedModelRef.current;
   const downloadShare = modelCached ? 0.08 : 0.42;
   const isDownloading = busy && progress?.phase === "download";
-  /** WASM work freezes JS timers — use CSS ETA animation instead. */
+  /** WASM work freezes JS timers; use CSS ETA animation instead. */
   const isEstimating =
     busy && status === "processing" && !isDownloading;
   const downloadProgress =
@@ -466,47 +466,6 @@ export function RemoveBg() {
 
       <header className="studio__header">
         <h1 className="studio__title">Remove background</h1>
-
-        {!empty && (
-          <div className="studio__header-actions">
-            {studioMode === "new" ? (
-              <button
-                type="button"
-                className="btn btn--ghost btn--small"
-                disabled={busy}
-                onClick={() => {
-                  setError(null);
-                  setStudioMode("view");
-                }}
-              >
-                Cancel
-              </button>
-            ) : (
-              <button
-                type="button"
-                className="btn btn--ghost btn--small"
-                disabled={busy || studioMode === "crop"}
-                onClick={() => {
-                  setOpenMenu("none");
-                  setError(null);
-                  setStudioMode("new");
-                }}
-              >
-                New
-              </button>
-            )}
-
-            {ready && downloadUrl && studioMode === "view" && (
-              <button
-                type="button"
-                className="btn btn--primary btn--small"
-                onClick={() => downloadDataUrl(downloadUrl, "cutout.png")}
-              >
-                Download
-              </button>
-            )}
-          </div>
-        )}
       </header>
 
       {empty && (
@@ -529,53 +488,77 @@ export function RemoveBg() {
       )}
 
       {!empty && (
-        <div
-          className={`studio__shell ${history.entries.length > 0 || pendingSourceUrl ? "has-gallery" : ""}`}
-        >
-          {(history.entries.length > 0 || pendingSourceUrl) && (
-            <aside className="studio__gallery" aria-label="Recent cutouts">
-              <div className="studio__gallery-head">
+        <div className="studio__shell has-gallery">
+          <aside className="studio__gallery" aria-label="Recent cutouts">
+            <div className="studio__gallery-head">
+              <div className="studio__gallery-label">
                 <span>Recent</span>
                 <span className="studio__gallery-count">
                   {history.entries.length}/{RMBG_HISTORY_MAX}
                 </span>
               </div>
-              <ul className="gallery-list">
-                {pendingSourceUrl && (
-                  <li className="gallery-list__item">
-                    <div className="gallery-thumb is-active is-pending">
-                      <img src={pendingSourceUrl} alt="" />
-                    </div>
+              {studioMode === "new" ? (
+                <button
+                  type="button"
+                  className="btn btn--ghost btn--small btn--block"
+                  disabled={busy}
+                  onClick={() => {
+                    setError(null);
+                    setStudioMode("view");
+                  }}
+                >
+                  Cancel
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="btn btn--ghost btn--small btn--block"
+                  disabled={busy || studioMode === "crop"}
+                  onClick={() => {
+                    setOpenMenu("none");
+                    setError(null);
+                    setStudioMode("new");
+                  }}
+                >
+                  New
+                </button>
+              )}
+            </div>
+            <ul className="gallery-list">
+              {pendingSourceUrl && (
+                <li className="gallery-list__item">
+                  <div className="gallery-thumb is-active is-pending">
+                    <img src={pendingSourceUrl} alt="" />
+                  </div>
+                </li>
+              )}
+              {history.entries.map((entry) => {
+                const selected =
+                  !pendingSourceUrl && entry.id === history.activeId;
+                return (
+                  <li key={entry.id} className="gallery-list__item">
+                    <button
+                      type="button"
+                      className={`gallery-thumb ${selected ? "is-active" : ""}`}
+                      disabled={busy || studioMode === "crop"}
+                      onClick={() => onSelect(entry.id)}
+                    >
+                      <img src={entry.cutoutUrl} alt="" />
+                    </button>
+                    <button
+                      type="button"
+                      className="gallery-thumb__remove"
+                      aria-label="Remove from recent"
+                      disabled={busy || studioMode === "crop"}
+                      onClick={() => void history.remove(entry.id)}
+                    >
+                      ×
+                    </button>
                   </li>
-                )}
-                {history.entries.map((entry) => {
-                  const selected =
-                    !pendingSourceUrl && entry.id === history.activeId;
-                  return (
-                    <li key={entry.id} className="gallery-list__item">
-                      <button
-                        type="button"
-                        className={`gallery-thumb ${selected ? "is-active" : ""}`}
-                        disabled={busy || studioMode === "crop"}
-                        onClick={() => onSelect(entry.id)}
-                      >
-                        <img src={entry.cutoutUrl} alt="" />
-                      </button>
-                      <button
-                        type="button"
-                        className="gallery-thumb__remove"
-                        aria-label="Remove from recent"
-                        disabled={busy || studioMode === "crop"}
-                        onClick={() => void history.remove(entry.id)}
-                      >
-                        ×
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            </aside>
-          )}
+                );
+              })}
+            </ul>
+          </aside>
 
           <div className="studio__work">
             {studioMode === "crop" && cutoutUrl ? (
@@ -678,7 +661,7 @@ export function RemoveBg() {
                             disabled={!ready}
                             onClick={() => toggleMenu("color")}
                           >
-                            Color{colorActive ? " · on" : ""}
+                            Color{colorActive ? " on" : ""}
                           </button>
                           {openMenu === "color" && (
                             <div
@@ -804,7 +787,7 @@ export function RemoveBg() {
                             disabled={!ready && !sourceUrl}
                             onClick={() => toggleMenu("advanced")}
                           >
-                            Advanced{cleanupOn ? " · on" : ""}
+                            Advanced{cleanupOn ? " on" : ""}
                           </button>
                           {openMenu === "advanced" && (
                             <div
@@ -812,52 +795,65 @@ export function RemoveBg() {
                               role="dialog"
                               aria-label="Advanced mask cleanup"
                             >
-                              <p className="menu-panel__lead">
-                                Optional mask cleanup. Off by default — can
-                                soften fine edges.
-                              </p>
-                              <label className="check-row">
-                                <input
-                                  type="checkbox"
-                                  checked={cleanup.removeSpeckles}
-                                  onChange={(e) =>
-                                    updateCleanup({
-                                      removeSpeckles: e.target.checked,
-                                    })
-                                  }
-                                />
-                                <span>
-                                  Remove speckles
-                                  <small>Drop leftover background bits</small>
-                                </span>
-                              </label>
-                              <label className="check-row">
-                                <input
-                                  type="checkbox"
-                                  checked={cleanup.fillHoles}
-                                  onChange={(e) =>
-                                    updateCleanup({
-                                      fillHoles: e.target.checked,
-                                    })
-                                  }
-                                />
-                                <span>
-                                  Fill holes
-                                  <small>Restore gaps cut into the subject</small>
-                                </span>
-                              </label>
+                              <header className="menu-panel__head">
+                                <h2 className="menu-panel__title">
+                                  Mask cleanup
+                                </h2>
+                                <p className="menu-panel__lead">
+                                  Optional. Off by default. May soften fine
+                                  edges.
+                                </p>
+                              </header>
+                              <div className="check-list">
+                                <label className="check-row">
+                                  <input
+                                    type="checkbox"
+                                    checked={cleanup.removeSpeckles}
+                                    onChange={(e) =>
+                                      updateCleanup({
+                                        removeSpeckles: e.target.checked,
+                                      })
+                                    }
+                                  />
+                                  <span>
+                                    Remove speckles
+                                    <small>
+                                      Drop leftover background bits
+                                    </small>
+                                  </span>
+                                </label>
+                                <label className="check-row">
+                                  <input
+                                    type="checkbox"
+                                    checked={cleanup.fillHoles}
+                                    onChange={(e) =>
+                                      updateCleanup({
+                                        fillHoles: e.target.checked,
+                                      })
+                                    }
+                                  />
+                                  <span>
+                                    Fill tiny holes
+                                    <small>
+                                      Pinholes only, not arm or leg gaps
+                                    </small>
+                                  </span>
+                                </label>
+                              </div>
                               <div className="menu-panel__actions">
                                 <button
                                   type="button"
-                                  className="btn btn--primary btn--small"
-                                  disabled={!ready || !cleanupOn || cleanupBusy}
+                                  className="btn btn--primary btn--small btn--block"
+                                  disabled={
+                                    !ready || !cleanupOn || cleanupBusy
+                                  }
                                   onClick={() => void applyCleanupToResult()}
                                 >
                                   Apply to result
                                 </button>
                                 <button
                                   type="button"
-                                  className="btn btn--ghost btn--small"
+                                  className="btn btn--ghost btn--small btn--block"
                                   disabled={!sourceUrl || busy}
                                   onClick={rerunFromSource}
                                 >
@@ -867,6 +863,18 @@ export function RemoveBg() {
                             </div>
                           )}
                         </div>
+
+                        {ready && downloadUrl && (
+                          <button
+                            type="button"
+                            className="btn btn--primary btn--small"
+                            onClick={() =>
+                              downloadDataUrl(downloadUrl, "cutout.png")
+                            }
+                          >
+                            Download
+                          </button>
+                        )}
                       </div>
                     </>
                   )}

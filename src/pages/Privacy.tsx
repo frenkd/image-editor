@@ -20,7 +20,7 @@ export function Privacy() {
         <h2>What leaves the device</h2>
         <p>
           On first use, your browser downloads an open AI model from Hugging Face
-          (model files only — not your photos). The site may load normal web
+          (model files only, not your photos). The site may load normal web
           assets (HTML, scripts, fonts) from its host. If analytics are enabled
           on the deployment, anonymous usage metrics may be collected by the
           host (for example page views), not your image contents.

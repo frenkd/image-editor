@@ -5,9 +5,11 @@ import {
   useState,
   useTransition,
 } from "react";
+import { Link } from "react-router-dom";
 import { DropZone } from "../components/DropZone";
 import { InlineCropper } from "../components/InlineCropper";
 import { Seo } from "../components/Seo";
+import { SiteFooter } from "../components/SiteFooter";
 import { usePasteImage } from "../hooks/usePasteImage";
 import { useRmbgHistory } from "../hooks/useRmbgHistory";
 import {
@@ -402,7 +404,8 @@ export function RemoveBg() {
             onFile={(file) => void ingestFile(file)}
           />
           <p className="studio__privacy">
-            Nothing leaves this device
+            Nothing leaves this device ·{" "}
+            <Link to="/how-it-works">How it works</Link>
           </p>
           {error && (
             <p className="status-line status-line--error" role="alert">
@@ -630,50 +633,7 @@ export function RemoveBg() {
         </div>
       )}
 
-      <footer className="studio__footer">
-        <span>On-device · nothing uploaded</span>
-        <span aria-hidden>·</span>
-        <span>
-          Made by{" "}
-          <a href="https://github.com/frenkd" target="_blank" rel="noreferrer">
-            frenkd
-          </a>
-        </span>
-        <span aria-hidden>·</span>
-        <a
-          href="https://github.com/frenkd/image-editor"
-          target="_blank"
-          rel="noreferrer"
-        >
-          Source
-        </a>
-      </footer>
-
-      <details className="studio__seo">
-        <summary>FAQ</summary>
-        <dl className="faq-list">
-          <div>
-            <dt>Do images leave my device?</dt>
-            <dd>
-              No. Nothing is uploaded. Processing and history stay in this
-              browser.
-            </dd>
-          </div>
-          <div>
-            <dt>Is this background remover free?</dt>
-            <dd>
-              Yes. Free and open source. Runs in your browser with no account.
-            </dd>
-          </div>
-          <div>
-            <dt>How do I add an image?</dt>
-            <dd>
-              Drop a file, click to browse, or paste a screenshot, copied image,
-              or image link.
-            </dd>
-          </div>
-        </dl>
-      </details>
+      <SiteFooter />
     </div>
   );
 }

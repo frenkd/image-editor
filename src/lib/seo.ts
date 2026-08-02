@@ -39,6 +39,21 @@ export const homeSeo: PageSeo = {
 /** @deprecated alias of homeSeo for older imports */
 export const removeBgSeo = homeSeo;
 
+export const howItWorksSeo: PageSeo = {
+  path: "/how-it-works",
+  title: "How Local Background Removal Works (Hugging Face Model in Your Browser)",
+  description:
+    "Plain-language guide to how this free background remover downloads an open Hugging Face model once, then cuts out images on your device with no upload.",
+  keywords: [
+    "how background removal works",
+    "local ai background remover",
+    "huggingface rmbg",
+    "browser background removal",
+    "on device image cutout",
+    "no upload background remover",
+  ],
+};
+
 export function absoluteUrl(path: string): string {
   if (path.startsWith("http")) return path;
   return `${SITE_URL}${path.startsWith("/") ? path : `/${path}`}`;

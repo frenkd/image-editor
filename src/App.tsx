@@ -1,6 +1,7 @@
 import { Analytics } from "@vercel/analytics/react";
 import { HelmetProvider } from "react-helmet-async";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { HowItWorks } from "./pages/HowItWorks";
 import { RemoveBg } from "./tools/RemoveBg";
 
 export default function App() {
@@ -10,6 +11,7 @@ export default function App() {
         <div className="app">
           <Routes>
             <Route path="/" element={<RemoveBg />} />
+            <Route path="/how-it-works" element={<HowItWorks />} />
             <Route path="/remove-background" element={<RemoveBg />} />
             <Route path="/remove-bg" element={<Navigate to="/" replace />} />
             <Route

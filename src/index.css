@@ -136,6 +136,63 @@ code {
   font-size: 0.88rem;
 }
 
+.studio__privacy a {
+  color: var(--ink-soft);
+  border-bottom: 1px solid var(--line-strong);
+}
+
+.studio__privacy a:hover {
+  border-color: var(--ink-soft);
+}
+
+.explain__back {
+  margin: 0 0 0.45rem;
+  font-size: 0.85rem;
+}
+
+.explain__back a {
+  color: var(--muted);
+  border-bottom: 1px solid transparent;
+}
+
+.explain__back a:hover {
+  color: var(--ink);
+  border-color: var(--ink);
+}
+
+.explain__body {
+  max-width: 40rem;
+  display: grid;
+  gap: 1.5rem;
+}
+
+.explain__body section {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.explain__body h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  letter-spacing: -0.02em;
+}
+
+.explain__body p {
+  margin: 0;
+  color: var(--ink-soft);
+  line-height: 1.55;
+}
+
+.explain__body a {
+  color: var(--ink);
+  border-bottom: 1px solid var(--line-strong);
+}
+
+.explain__cta {
+  margin: 0.5rem 0 0;
+}
+
 .size-meta {
   margin: 0;
   font-family: var(--font-mono);
